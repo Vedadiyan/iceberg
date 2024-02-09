@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 
@@ -63,6 +65,32 @@ func HttpHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(body)
+}
+
+func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request) {
+	err := FilterRequest(r, conf.Filters)
+	if err != nil {
+		return
+	}
+	conn, err := net.Dial("tcp", conf.Backend.Host)
+	if err != nil {
+		return
+	}
+	req, err := handlers.CloneRequest(r, handlers.WithUrl(conf.Backend))
+	if err != nil {
+		return
+	}
+	var buffer bytes.Buffer
+	err = req.Write(&buffer)
+	if err != nil {
+		return
+	}
+	_, err = io.Copy(conn, &buffer)
+	if err != nil {
+		return
+	}
+	go io.Copy(w, conn)
+	go io.Copy(conn, r.Body)
 }
 
 func HttpProxy(r *http.Request, backend url.URL) (*http.Response, error) {
