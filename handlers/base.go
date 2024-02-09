@@ -55,22 +55,20 @@ func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, err
 	return http.NewRequest(request.Method, request.Url.String(), io.NopCloser(bytes.NewBuffer(body)))
 }
 
-func ConvertToRequest(res *http.Response, req *http.Request) (*http.Request, error) {
-	body, err := io.ReadAll(req.Body)
+func RequestFrom(res *http.Response, err error) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	(*req).Body = io.NopCloser(bytes.NewBuffer(body))
-	clone, err := http.NewRequest("", "", io.NopCloser(bytes.NewBuffer(body)))
+	r, err := http.NewRequest("", "", res.Body)
 	if err != nil {
 		return nil, err
 	}
-	for key, values := range req.Header {
+	for key, values := range res.Header {
 		for _, value := range values {
-			clone.Header.Add(key, value)
+			r.Header.Add(key, value)
 		}
 	}
-	return clone, nil
+	return r, nil
 }
 
 func WithUrl(url url.URL) RequestOption {

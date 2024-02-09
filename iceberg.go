@@ -23,34 +23,46 @@ const (
 func New(conf handlers.Conf) Handler {
 	return func(sm *http.ServeMux) {
 		sm.HandleFunc(conf.Frontend.String(), func(w http.ResponseWriter, r *http.Request) {
-			err := FilterRequest(r, conf.Filters)
-			if err != nil {
+			if IsWebSocket(r) {
 				return
 			}
-			res, err := HttpProxy(r, conf.Backend)
-			if err != nil {
-				return
-			}
-			req, err := handlers.ConvertToRequest(res, r)
-			if err != nil {
-				return
-			}
-			err = FilterResponse(req, conf.Filters)
-			if err != nil {
-				return
-			}
-			for key, values := range req.Header {
-				for _, value := range values {
-					w.Header().Add(key, value)
-				}
-			}
-			body, err := io.ReadAll(req.Body)
-			if err != nil {
-				return
-			}
-			w.Write(body)
+			HttpHandler(conf, w, r)
 		})
 	}
+}
+
+func IsWebSocket(r *http.Request) bool {
+	for _, value := range r.Header["Upgrade"] {
+		if value == "websocket" {
+			return true
+		}
+	}
+	return false
+}
+
+func HttpHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request) {
+	err := FilterRequest(r, conf.Filters)
+	if err != nil {
+		return
+	}
+	r, err = handlers.RequestFrom(HttpProxy(r, conf.Backend))
+	if err != nil {
+		return
+	}
+	err = FilterResponse(r, conf.Filters)
+	if err != nil {
+		return
+	}
+	for key, values := range r.Header {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return
+	}
+	w.Write(body)
 }
 
 func HttpProxy(r *http.Request, backend url.URL) (*http.Response, error) {
