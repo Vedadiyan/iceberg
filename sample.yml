@@ -1,0 +1,21 @@
+apiVersion: iceberg/v1
+spec:
+  listen: ":8081"
+    resources:
+      - name: Some Name
+        frontend: /test
+        backend: 127.0.0.1:8080/test
+        filter_chains: 
+          - name: authorize
+            type: http
+            listener: http://authorize.local
+            level: "intercept"
+            conf: 
+              exchange_headers: 
+                - X-User-Token
+              drop_headers: 
+                - X-Forwarded-For
+              exchange_body: false
+
+
+
