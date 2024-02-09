@@ -34,11 +34,14 @@ type (
 )
 
 const (
-	INTERCEPT           Level = "intercept"
-	INTERCEPT_SOCKET    Level = "intercept_socket"
-	POST_PROCESS        Level = "post_process"
-	POST_PROCESS_SOCKET Level = "post_process_socket"
-	PARALLEL            Level = "parallel"
+	INTERCEPT                Level = "intercept"
+	INTERCEPT_SOCKET         Level = "intercept_socket"
+	POST_PROCESS             Level = "post_process"
+	POST_PROCESS_SOCKET      Level = "post_process_socket"
+	PARALLEL_REQUEST         Level = "parallel_request"
+	PARALLEL_RESPONSE        Level = "parallel_response"
+	PARALLEL_REQUEST_SOCKET  Level = "parallel_request_socket"
+	PARALLEL_RESPONSE_SOCKET Level = "parallel_response_socket"
 )
 
 func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, error) {

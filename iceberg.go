@@ -34,6 +34,7 @@ func New(conf handlers.Conf) Handler {
 	return func(sm *http.ServeMux) {
 		sm.HandleFunc(conf.Frontend.String(), func(w http.ResponseWriter, r *http.Request) {
 			if IsWebSocket(r) {
+				WebSocketHandler(conf, w, r)
 				return
 			}
 			HttpHandler(conf, w, r)
