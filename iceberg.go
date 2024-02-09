@@ -103,7 +103,7 @@ func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request
 	if err != nil {
 		return
 	}
-	proxiedConn, _, err := websocket.DefaultDialer.Dial(conf.Backend.String(), r.Header)
+	proxiedConn, _, err := websocket.DefaultDialer.Dial(conf.Backend.String(), nil)
 	if err != nil {
 		return
 	}
@@ -116,24 +116,25 @@ func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request
 		}()
 		for interceptListen {
 			conn.SetReadDeadline(time.Now().Add(time.Second * 2))
-			messageType, data, err := conn.ReadMessage()
+			messageType, data, err := conn.NextReader()
 			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					return
-				}
+				return
+			}
+			message, err := io.ReadAll(data)
+			if err != nil {
 				continue
 			}
 			req, err := handlers.CloneRequest(r)
 			if err != nil {
 				return
 			}
-			req.Body = io.NopCloser(bytes.NewBuffer(data))
+			req.Body = io.NopCloser(bytes.NewBuffer(message))
 			err = FilterSocketRequest(req, conf.Filters)
 			if err != nil {
 				return
 			}
 			proxiedConn.SetWriteDeadline(time.Now().Add(time.Second * 2))
-			err = proxiedConn.WriteMessage(messageType, data)
+			err = proxiedConn.WriteMessage(messageType, message)
 			if err != nil {
 				continue
 			}
@@ -146,19 +147,20 @@ func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request
 		}()
 		for proxyListen {
 			proxiedConn.SetReadDeadline(time.Now().Add(time.Second * 2))
-			messageType, data, err := proxiedConn.ReadMessage()
-			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					return
-				}
-				continue
-			}
-			err = FilterSocketResponse(nil, conf.Filters)
+			messageType, data, err := proxiedConn.NextReader()
 			if err != nil {
 				return
 			}
+			err = FilterSocketResponse(nil, conf.Filters)
+			if err != nil {
+				continue
+			}
+			message, err := io.ReadAll(data)
+			if err != nil {
+				continue
+			}
 			conn.SetWriteDeadline(time.Now().Add(time.Second * 2))
-			err = conn.WriteMessage(messageType, data)
+			err = conn.WriteMessage(messageType, message)
 			if err != nil {
 				continue
 			}
@@ -253,4 +255,17 @@ func Success(statusCode int) StatusCodeClass {
 		return STATUS_CLIENT_ERROR
 	}
 	return STATUS_SERVER_ERROR
+}
+
+func main() {
+	frontend, err := url.Parse("/comms")
+	_ = err
+	backend, err := url.Parse("ws://127.0.0.1:3000/comms")
+	mux := http.NewServeMux()
+	handler := New(handlers.Conf{
+		Frontend: *frontend,
+		Backend:  *backend,
+	})
+	handler(mux)
+	http.ListenAndServe(":8081", mux)
 }
