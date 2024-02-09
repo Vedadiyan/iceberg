@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/vedadiyan/iceberg/handlers"
@@ -83,10 +84,20 @@ func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request
 	if err != nil {
 		return
 	}
+	intercentListen := true
+	proxyListen := true
 	go func() {
-		for {
+		defer func() {
+			conn.Close()
+			proxyListen = false
+		}()
+		for intercentListen {
+			conn.SetReadDeadline(time.Now().Add(time.Second * 2))
 			messageType, data, err := conn.ReadMessage()
 			if err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					return
+				}
 				continue
 			}
 			req, err := handlers.CloneRequest(r)
@@ -98,6 +109,7 @@ func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request
 			if err != nil {
 				return
 			}
+			proxiedConn.SetWriteDeadline(time.Now().Add(time.Second * 2))
 			err = proxiedConn.WriteMessage(messageType, data)
 			if err != nil {
 				continue
@@ -105,15 +117,24 @@ func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request
 		}
 	}()
 	go func() {
-		for {
+		defer func() {
+			proxiedConn.Close()
+			intercentListen = false
+		}()
+		for proxyListen {
+			proxiedConn.SetReadDeadline(time.Now().Add(time.Second * 2))
 			messageType, data, err := proxiedConn.ReadMessage()
 			if err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					return
+				}
 				continue
 			}
 			err = FilterSocketResponse(nil, conf.Filters)
 			if err != nil {
 				return
 			}
+			conn.SetWriteDeadline(time.Now().Add(time.Second * 2))
 			err = conn.WriteMessage(messageType, data)
 			if err != nil {
 				continue
