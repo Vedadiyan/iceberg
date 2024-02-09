@@ -3,16 +3,23 @@ package main
 import (
 	"bytes"
 	"io"
-	"net"
 	"net/http"
 	"net/url"
 
+	"github.com/gorilla/websocket"
 	"github.com/vedadiyan/iceberg/handlers"
 )
 
 type (
 	StatusCodeClass int
 	Handler         func(*http.ServeMux)
+)
+
+var (
+	upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
 )
 
 const (
@@ -68,29 +75,51 @@ func HttpHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request) {
 }
 
 func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request) {
-	err := FilterRequest(r, conf.Filters)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
 	}
-	conn, err := net.Dial("tcp", conf.Backend.Host)
+	proxiedConn, _, err := websocket.DefaultDialer.Dial(conf.Backend.String(), r.Header)
 	if err != nil {
 		return
 	}
-	req, err := handlers.CloneRequest(r, handlers.WithUrl(conf.Backend))
-	if err != nil {
-		return
-	}
-	var buffer bytes.Buffer
-	err = req.Write(&buffer)
-	if err != nil {
-		return
-	}
-	_, err = io.Copy(conn, &buffer)
-	if err != nil {
-		return
-	}
-	go io.Copy(w, conn)
-	go io.Copy(conn, r.Body)
+	go func() {
+		for {
+			messageType, data, err := conn.ReadMessage()
+			if err != nil {
+				continue
+			}
+			req, err := handlers.CloneRequest(r)
+			if err != nil {
+				return
+			}
+			req.Body = io.NopCloser(bytes.NewBuffer(data))
+			err = FilterSocketRequest(req, conf.Filters)
+			if err != nil {
+				return
+			}
+			err = proxiedConn.WriteMessage(messageType, data)
+			if err != nil {
+				continue
+			}
+		}
+	}()
+	go func() {
+		for {
+			messageType, data, err := proxiedConn.ReadMessage()
+			if err != nil {
+				continue
+			}
+			err = FilterSocketResponse(nil, conf.Filters)
+			if err != nil {
+				return
+			}
+			err = conn.WriteMessage(messageType, data)
+			if err != nil {
+				continue
+			}
+		}
+	}()
 }
 
 func HttpProxy(r *http.Request, backend url.URL) (*http.Response, error) {
@@ -130,9 +159,36 @@ func FilterRequest(r *http.Request, filters []handlers.Filter) error {
 	}
 	return nil
 }
+
+func FilterSocketRequest(r *http.Request, filters []handlers.Filter) error {
+	for _, filter := range filters {
+		if filter.Level() != handlers.INTERCEPT_SOCKET {
+			continue
+		}
+		err := HandlerFunc(r, filter)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func FilterResponse(r *http.Request, filters []handlers.Filter) error {
 	for _, filter := range filters {
 		if filter.Level() != handlers.POST_PROCESS {
+			continue
+		}
+		err := HandlerFunc(r, filter)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func FilterSocketResponse(r *http.Request, filters []handlers.Filter) error {
+	for _, filter := range filters {
+		if filter.Level() != handlers.POST_PROCESS_SOCKET {
 			continue
 		}
 		err := HandlerFunc(r, filter)
