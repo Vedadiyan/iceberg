@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -12,8 +13,24 @@ import (
 )
 
 type (
-	StatusCodeClass int
-	Handler         func(*http.ServeMux)
+	StatusCodeClass   int
+	Handler           func(*http.ServeMux)
+	HandlerErrorClass int
+	HandlerError      struct {
+		Class   HandlerErrorClass
+		Message string
+	}
+)
+
+const (
+	STATUS_NONE         StatusCodeClass = 0
+	STATUS_SUCCESS      StatusCodeClass = 1
+	STATUS_CLIENT_ERROR StatusCodeClass = 2
+	STATUS_SERVER_ERROR StatusCodeClass = 3
+
+	HANDLER_ERROR_INTERNAL HandlerErrorClass = 0
+	HANDLER_ERROR_FILTER   HandlerErrorClass = 1
+	HANDLER_ERROR_PROXY    HandlerErrorClass = 2
 )
 
 var (
@@ -23,12 +40,17 @@ var (
 	}
 )
 
-const (
-	NONE         StatusCodeClass = 0
-	SUCCESS      StatusCodeClass = 1
-	CLIENT_ERROR StatusCodeClass = 2
-	SERVER_ERROR StatusCodeClass = 3
-)
+func (handlerError HandlerError) Error() string {
+	return fmt.Sprintf("%d: %s", handlerError.Class, handlerError.Message)
+}
+
+func NewHandlerError(class HandlerErrorClass, message string) error {
+	handlerError := HandlerError{
+		Class:   class,
+		Message: message,
+	}
+	return handlerError
+}
 
 func New(conf handlers.Conf) Handler {
 	return func(sm *http.ServeMux) {
@@ -156,11 +178,10 @@ func HttpProxy(r *http.Request, backend url.URL) (*http.Response, error) {
 func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	res, err := filter.Handle(r)
 	if err != nil {
-		return err
+		return NewHandlerError(HANDLER_ERROR_INTERNAL, err.Error())
 	}
-	if StatusCodeClass(res.StatusCode) != SUCCESS {
-		return err
-
+	if StatusCodeClass(res.StatusCode) != STATUS_SUCCESS {
+		return NewHandlerError(HANDLER_ERROR_FILTER, res.Status)
 	}
 	err = filter.MoveTo(res, r)
 	if err != nil {
@@ -223,13 +244,13 @@ func FilterSocketResponse(r *http.Request, filters []handlers.Filter) error {
 
 func Success(statusCode int) StatusCodeClass {
 	if statusCode < 200 {
-		return NONE
+		return STATUS_NONE
 	}
 	if statusCode < 400 {
-		return SUCCESS
+		return STATUS_SUCCESS
 	}
 	if statusCode < 500 {
-		return CLIENT_ERROR
+		return STATUS_CLIENT_ERROR
 	}
-	return SERVER_ERROR
+	return STATUS_SERVER_ERROR
 }
