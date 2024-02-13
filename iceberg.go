@@ -129,23 +129,42 @@ func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request
 			}
 			message, err := io.ReadAll(data)
 			if err != nil {
-				conn.WriteJSON(map[string]any{"error": err.Error()})
+				conn.WriteJSON(HandlerError{
+					Class:      HANDLER_ERROR_INTERNAL,
+					StatusCode: 500,
+					Message:    err.Error(),
+				})
 				continue
 			}
 			req, err := handlers.CloneRequest(r)
 			if err != nil {
-				conn.WriteJSON(map[string]any{"error": err.Error()})
+				conn.WriteJSON(HandlerError{
+					Class:      HANDLER_ERROR_INTERNAL,
+					StatusCode: 500,
+					Message:    err.Error(),
+				})
 				return
 			}
 			req.Body = io.NopCloser(bytes.NewBuffer(message))
 			err = FilterSocketRequest(req, conf.Filters)
 			if err != nil {
-				conn.WriteJSON(map[string]any{"denied": err.Error()})
+				if handlerError, ok := err.(HandlerError); ok {
+					conn.WriteJSON(handlerError)
+					return
+				}
+				conn.WriteJSON(HandlerError{
+					StatusCode: 418,
+				})
 				return
 			}
 			proxiedConn.SetWriteDeadline(time.Now().Add(time.Second * 2))
 			err = proxiedConn.WriteMessage(messageType, message)
 			if err != nil {
+				conn.WriteJSON(HandlerError{
+					Class:      HANDLER_ERROR_PROXY,
+					StatusCode: 500,
+					Message:    err.Error(),
+				})
 				continue
 			}
 		}
