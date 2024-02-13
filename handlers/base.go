@@ -37,8 +37,7 @@ type (
 const (
 	INTERCEPT    Level = 2
 	POST_PROCESS Level = 4
-	SOCKET       Level = 8
-	PARALLEL     Level = 16
+	PARALLEL     Level = 8
 )
 
 func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, error) {

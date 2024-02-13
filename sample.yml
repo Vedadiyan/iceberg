@@ -9,7 +9,7 @@ spec:
           - name: authorize
             type: http
             listener: http://authorize.local
-            level: "intercept"
+            level: "request|parallel"
             conf: 
               exchange_headers: 
                 - X-User-Token
