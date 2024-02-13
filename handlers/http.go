@@ -5,19 +5,13 @@ import (
 )
 
 type (
-	HttpFilterBase struct {
+	HttpFilter struct {
 		FilterBase
 		Method string
 	}
-	HttpRequestFilter struct {
-		HttpFilterBase
-	}
-	HttpResponseFilter struct {
-		HttpFilterBase
-	}
 )
 
-func (filter *HttpFilterBase) Handle(r *http.Request) (*http.Response, error) {
+func (filter *HttpFilter) Handle(r *http.Request) (*http.Response, error) {
 	req, err := CloneRequest(r, WithMethod(filter.Method), WithUrl(filter.Address))
 	if err != nil {
 		return nil, err
@@ -25,10 +19,6 @@ func (filter *HttpFilterBase) Handle(r *http.Request) (*http.Response, error) {
 	return http.DefaultClient.Do(req)
 }
 
-func (filter *HttpRequestFilter) Level() Level {
-	return INTERCEPT
-}
-
-func (filter *HttpResponseFilter) Level() Level {
-	return POST_PROCESS
+func (filter *HttpFilter) Is(level Level) bool {
+	return filter.Level&level == level
 }

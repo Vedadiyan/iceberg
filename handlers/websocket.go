@@ -1,14 +1,8 @@
 package handlers
 
 type (
-	WSFilterBase struct {
+	WSFilter struct {
 		FilterBase
 		Method string
-	}
-	WSRequestFilter struct {
-		WSFilterBase
-	}
-	WSResponseFilter struct {
-		WSFilterBase
 	}
 )

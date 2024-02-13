@@ -1,13 +1,7 @@
 package handlers
 
 type (
-	NATSFilterBase struct {
+	NATSFilter struct {
 		FilterBase
-	}
-	NATSRequestFilter struct {
-		NATSFilterBase
-	}
-	NATSResponseFilter struct {
-		NATSFilterBase
 	}
 )

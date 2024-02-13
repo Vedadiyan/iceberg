@@ -11,7 +11,7 @@ type (
 	Level  int
 	Filter interface {
 		Handle(r *http.Request) (*http.Response, error)
-		Level() Level
+		Is(level Level) bool
 		MoveTo(*http.Response, *http.Request) error
 	}
 	FilterBase struct {
@@ -20,6 +20,7 @@ type (
 		ExchangeHeaders []string
 		DropHeaders     []string
 		ExchangeBody    bool
+		Level           Level
 	}
 	Conf struct {
 		Frontend url.URL

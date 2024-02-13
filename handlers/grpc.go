@@ -1,13 +1,7 @@
 package handlers
 
 type (
-	GRPCFilterBase struct {
+	GRPCFilter struct {
 		FilterBase
-	}
-	GRPCRequestFilter struct {
-		GRPCFilterBase
-	}
-	GRPCResponseFilter struct {
-		GRPCFilterBase
 	}
 )
