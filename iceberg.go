@@ -17,8 +17,9 @@ type (
 	Handler           func(*http.ServeMux)
 	HandlerErrorClass int
 	HandlerError      struct {
-		Class   HandlerErrorClass
-		Message string
+		Class      HandlerErrorClass
+		StatusCode int
+		Message    string
 	}
 )
 
@@ -44,7 +45,7 @@ func (handlerError HandlerError) Error() string {
 	return fmt.Sprintf("%d: %s", handlerError.Class, handlerError.Message)
 }
 
-func NewHandlerError(class HandlerErrorClass, message string) error {
+func NewHandlerError(class HandlerErrorClass, statusCode int, message string) error {
 	handlerError := HandlerError{
 		Class:   class,
 		Message: message,
@@ -76,6 +77,12 @@ func IsWebSocket(r *http.Request) bool {
 func HttpHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	err := FilterRequest(r, conf.Filters)
 	if err != nil {
+		if handlerError, ok := err.(HandlerError); ok {
+			w.WriteHeader(handlerError.StatusCode)
+			w.Write([]byte(handlerError.Message))
+			return
+		}
+		w.WriteHeader(418)
 		return
 	}
 	r, err = handlers.RequestFrom(HttpProxy(r, conf.Backend))
@@ -122,15 +129,18 @@ func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request
 			}
 			message, err := io.ReadAll(data)
 			if err != nil {
+				conn.WriteJSON(map[string]any{"error": err.Error()})
 				continue
 			}
 			req, err := handlers.CloneRequest(r)
 			if err != nil {
+				conn.WriteJSON(map[string]any{"error": err.Error()})
 				return
 			}
 			req.Body = io.NopCloser(bytes.NewBuffer(message))
 			err = FilterSocketRequest(req, conf.Filters)
 			if err != nil {
+				conn.WriteJSON(map[string]any{"denied": err.Error()})
 				return
 			}
 			proxiedConn.SetWriteDeadline(time.Now().Add(time.Second * 2))
@@ -180,10 +190,10 @@ func HttpProxy(r *http.Request, backend url.URL) (*http.Response, error) {
 func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	res, err := filter.Handle(r)
 	if err != nil {
-		return NewHandlerError(HANDLER_ERROR_INTERNAL, err.Error())
+		return NewHandlerError(HANDLER_ERROR_INTERNAL, res.StatusCode, err.Error())
 	}
 	if StatusCodeClass(res.StatusCode) != STATUS_SUCCESS {
-		return NewHandlerError(HANDLER_ERROR_FILTER, res.Status)
+		return NewHandlerError(HANDLER_ERROR_FILTER, res.StatusCode, res.Status)
 	}
 	err = filter.MoveTo(res, r)
 	if err != nil {
