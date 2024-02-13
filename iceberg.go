@@ -21,10 +21,6 @@ type (
 		StatusCode int
 		Message    string
 	}
-	HandlerFuncOptions struct {
-		Move bool
-	}
-	HandlerFuncOption func(handlerFuncOptions *HandlerFuncOptions)
 )
 
 const (
@@ -216,17 +212,7 @@ func HttpProxy(r *http.Request, backend url.URL) (*http.Response, error) {
 
 }
 
-func WithMove() HandlerFuncOption {
-	return func(handlerFuncOptions *HandlerFuncOptions) {
-		handlerFuncOptions.Move = true
-	}
-}
-
-func HandlerFunc(r *http.Request, filter handlers.Filter, options ...HandlerFuncOption) error {
-	handlerFuncOptions := HandlerFuncOptions{}
-	for _, option := range options {
-		option(&handlerFuncOptions)
-	}
+func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	res, err := filter.Handle(r)
 	if err != nil {
 		return NewHandlerError(HANDLER_ERROR_INTERNAL, res.StatusCode, err.Error())
@@ -234,11 +220,9 @@ func HandlerFunc(r *http.Request, filter handlers.Filter, options ...HandlerFunc
 	if StatusCodeClass(res.StatusCode) != STATUS_SUCCESS {
 		return NewHandlerError(HANDLER_ERROR_FILTER, res.StatusCode, res.Status)
 	}
-	if handlerFuncOptions.Move {
-		err = filter.MoveTo(res, r)
-		if err != nil {
-			return err
-		}
+	err = filter.MoveTo(res, r)
+	if err != nil {
+		return err
 	}
 	return nil
 }
@@ -249,7 +233,7 @@ func FilterRequest(r *http.Request, filters []handlers.Filter) error {
 			continue
 		}
 		if !filter.Is(handlers.PARALLEL) {
-			err := HandlerFunc(r, filter, WithMove())
+			err := HandlerFunc(r, filter)
 			if err != nil {
 				return err
 			}
@@ -266,7 +250,7 @@ func FilterResponse(r *http.Request, filters []handlers.Filter) error {
 			continue
 		}
 		if !filter.Is(handlers.PARALLEL) {
-			err := HandlerFunc(r, filter, WithMove())
+			err := HandlerFunc(r, filter)
 			if err != nil {
 				return err
 			}
