@@ -122,7 +122,6 @@ func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request
 			proxyListen = false
 		}()
 		for interceptListen {
-			conn.SetReadDeadline(time.Now().Add(time.Second * 2))
 			messageType, data, err := conn.NextReader()
 			if err != nil {
 				return
@@ -175,7 +174,6 @@ func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request
 			interceptListen = false
 		}()
 		for proxyListen {
-			proxiedConn.SetReadDeadline(time.Now().Add(time.Second * 2))
 			messageType, data, err := proxiedConn.NextReader()
 			if err != nil {
 				return
