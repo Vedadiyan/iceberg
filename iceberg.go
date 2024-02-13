@@ -221,52 +221,80 @@ func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 
 func FilterRequest(r *http.Request, filters []handlers.Filter) error {
 	for _, filter := range filters {
-		if filter.Level() != handlers.INTERCEPT {
+		if filter.Level()&handlers.SOCKET == handlers.SOCKET {
 			continue
 		}
-		err := HandlerFunc(r, filter)
-		if err != nil {
-			return err
+		if filter.Level()&handlers.INTERCEPT != handlers.INTERCEPT {
+			continue
 		}
+		if filter.Level()&handlers.PARALLEL != handlers.PARALLEL {
+			err := HandlerFunc(r, filter)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		go HandlerFunc(r, filter)
 	}
 	return nil
 }
 
 func FilterSocketRequest(r *http.Request, filters []handlers.Filter) error {
 	for _, filter := range filters {
-		if filter.Level() != handlers.INTERCEPT_SOCKET {
+		if filter.Level()&handlers.SOCKET != handlers.SOCKET {
 			continue
 		}
-		err := HandlerFunc(r, filter)
-		if err != nil {
-			return err
+		if filter.Level()&handlers.INTERCEPT != handlers.INTERCEPT {
+			continue
 		}
+		if filter.Level()&handlers.PARALLEL != handlers.PARALLEL {
+			err := HandlerFunc(r, filter)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		go HandlerFunc(r, filter)
 	}
 	return nil
 }
 
 func FilterResponse(r *http.Request, filters []handlers.Filter) error {
 	for _, filter := range filters {
-		if filter.Level() != handlers.POST_PROCESS {
+		if filter.Level()&handlers.SOCKET == handlers.SOCKET {
 			continue
 		}
-		err := HandlerFunc(r, filter)
-		if err != nil {
-			return err
+		if filter.Level()&handlers.POST_PROCESS != handlers.POST_PROCESS {
+			continue
 		}
+		if filter.Level()&handlers.PARALLEL != handlers.PARALLEL {
+			err := HandlerFunc(r, filter)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		go HandlerFunc(r, filter)
 	}
 	return nil
 }
 
 func FilterSocketResponse(r *http.Request, filters []handlers.Filter) error {
 	for _, filter := range filters {
-		if filter.Level() != handlers.POST_PROCESS_SOCKET {
+		if filter.Level()&handlers.SOCKET != handlers.SOCKET {
 			continue
 		}
-		err := HandlerFunc(r, filter)
-		if err != nil {
-			return err
+		if filter.Level()&handlers.POST_PROCESS != handlers.POST_PROCESS {
+			continue
 		}
+		if filter.Level()&handlers.PARALLEL != handlers.PARALLEL {
+			err := HandlerFunc(r, filter)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		go HandlerFunc(r, filter)
 	}
 	return nil
 }

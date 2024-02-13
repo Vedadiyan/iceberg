@@ -8,7 +8,7 @@ import (
 )
 
 type (
-	Level  string
+	Level  int
 	Filter interface {
 		Handle(r *http.Request) (*http.Response, error)
 		Level() Level
@@ -34,14 +34,10 @@ type (
 )
 
 const (
-	INTERCEPT                Level = "intercept"
-	INTERCEPT_SOCKET         Level = "intercept_socket"
-	POST_PROCESS             Level = "post_process"
-	POST_PROCESS_SOCKET      Level = "post_process_socket"
-	PARALLEL_REQUEST         Level = "parallel_request"
-	PARALLEL_RESPONSE        Level = "parallel_response"
-	PARALLEL_REQUEST_SOCKET  Level = "parallel_request_socket"
-	PARALLEL_RESPONSE_SOCKET Level = "parallel_response_socket"
+	INTERCEPT    Level = 2
+	POST_PROCESS Level = 4
+	SOCKET       Level = 8
+	PARALLEL     Level = 16
 )
 
 func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, error) {
