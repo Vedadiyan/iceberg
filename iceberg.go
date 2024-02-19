@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -275,19 +276,30 @@ func Success(statusCode int) StatusCodeClass {
 }
 
 func main() {
-	xxx, err := url.Parse("default-nats:authorize.local:ok")
+	ver, conf, err := Parse()
 	if err != nil {
-		panic(err)
+		log.Fatalln(err.Error())
 	}
-	_ = xxx
-	frontend, err := url.Parse("/comms")
-	_ = err
-	backend, err := url.Parse("ws://127.0.0.1:3000/comms")
-	mux := http.NewServeMux()
-	handler := New(&handlers.Conf{
-		Frontend: frontend,
-		Backend:  backend,
-	})
-	handler(mux)
-	http.ListenAndServe(":8081", mux)
+	var server Server
+	switch ver {
+	case VER_V1:
+		{
+			specV1, ok := conf.(*SpecV1)
+			if !ok {
+				log.Fatalln("invalid program")
+			}
+			server, err = BuildV1(specV1)
+			if err != nil {
+				log.Fatalln(err.Error())
+			}
+		}
+	default:
+		{
+			log.Fatalln("unsupported api version")
+		}
+	}
+	err = server()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 }

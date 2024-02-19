@@ -47,13 +47,13 @@ const (
 	VER_V1
 )
 
-func Parse(file string) (ApiVersion, any, error) {
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return VER_NONE, nil, err
+func Parse() (ApiVersion, any, error) {
+	data := os.Getenv("ICEBERG_CONFIG")
+	if len(data) == 0 {
+		return VER_NONE, nil, fmt.Errorf("iceberg config not found")
 	}
 	version := Version{}
-	err = yaml.Unmarshal(data, &version)
+	err := yaml.Unmarshal([]byte(data), &version)
 	if err != nil {
 		return VER_NONE, nil, err
 	}
@@ -61,11 +61,11 @@ func Parse(file string) (ApiVersion, any, error) {
 	case "iceberg/v1":
 		{
 			var specV1 SpecV1
-			err := yaml.Unmarshal(data, &specV1)
+			err := yaml.Unmarshal([]byte(data), &specV1)
 			if err != nil {
 				return VER_NONE, nil, err
 			}
-			return VER_V1, specV1, nil
+			return VER_V1, &specV1, nil
 		}
 	default:
 		{
