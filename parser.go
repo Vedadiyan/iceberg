@@ -33,6 +33,7 @@ type (
 		Level     string `yaml:"level"`
 		Method    string `yaml:"method"`
 		Conf      ConfV1 `yaml:"conf"`
+		Timeout   int    `yaml:"timeout"`
 	}
 	ConfV1 struct {
 		ExchangeHeaders []string `yaml:"exchangeHeaders"`
@@ -103,6 +104,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					httpFilter.ExchangeBody = filter.Conf.ExchangeBody
 					httpFilter.Level = level
 					httpFilter.Method = filter.Method
+					httpFilter.Timeout = filter.Timeout
 					filters = append(filters, &httpFilter)
 				}
 			case "nats":
@@ -112,6 +114,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					natsFilter.ExchangeHeaders = filter.Conf.ExchangeHeaders
 					natsFilter.ExchangeBody = filter.Conf.ExchangeBody
 					natsFilter.Level = level
+					natsFilter.Timeout = filter.Timeout
 					filters = append(filters, &natsFilter)
 				}
 			}

@@ -21,6 +21,7 @@ type (
 		DropHeaders     []string
 		ExchangeBody    bool
 		Level           Level
+		Timeout         int
 	}
 	Conf struct {
 		Frontend *url.URL
