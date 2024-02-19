@@ -16,19 +16,19 @@ type (
 	}
 	FilterBase struct {
 		Filter
-		Address         url.URL
+		Address         *url.URL
 		ExchangeHeaders []string
 		DropHeaders     []string
 		ExchangeBody    bool
 		Level           Level
 	}
 	Conf struct {
-		Frontend url.URL
-		Backend  url.URL
+		Frontend *url.URL
+		Backend  *url.URL
 		Filters  []Filter
 	}
 	Request struct {
-		Url    url.URL
+		Url    *url.URL
 		Method string
 	}
 	RequestOption func(*Request)
@@ -42,7 +42,7 @@ const (
 
 func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, error) {
 	request := Request{
-		Url:    *r.URL,
+		Url:    r.URL,
 		Method: r.Method,
 	}
 	for _, option := range options {
@@ -72,7 +72,7 @@ func RequestFrom(res *http.Response, err error) (*http.Request, error) {
 	return r, nil
 }
 
-func WithUrl(url url.URL) RequestOption {
+func WithUrl(url *url.URL) RequestOption {
 	return func(r *Request) {
 		r.Url = url
 	}

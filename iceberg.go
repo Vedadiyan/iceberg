@@ -53,7 +53,7 @@ func NewHandlerError(class HandlerErrorClass, statusCode int, message string) er
 	return handlerError
 }
 
-func New(conf handlers.Conf) Handler {
+func New(conf *handlers.Conf) Handler {
 	return func(sm *http.ServeMux) {
 		sm.HandleFunc(conf.Frontend.String(), func(w http.ResponseWriter, r *http.Request) {
 			if IsWebSocket(r) {
@@ -74,7 +74,7 @@ func IsWebSocket(r *http.Request) bool {
 	return false
 }
 
-func HttpHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request) {
+func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	err := FilterRequest(r, conf.Filters)
 	if err != nil {
 		if handlerError, ok := err.(HandlerError); ok {
@@ -105,7 +105,7 @@ func HttpHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request) {
+func WebSocketHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
@@ -203,7 +203,7 @@ func WebSocketHandler(conf handlers.Conf, w http.ResponseWriter, r *http.Request
 	}()
 }
 
-func HttpProxy(r *http.Request, backend url.URL) (*http.Response, error) {
+func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 	req, err := handlers.CloneRequest(r, handlers.WithUrl(backend))
 	if err != nil {
 		return nil, err
@@ -279,9 +279,9 @@ func main() {
 	_ = err
 	backend, err := url.Parse("ws://127.0.0.1:3000/comms")
 	mux := http.NewServeMux()
-	handler := New(handlers.Conf{
-		Frontend: *frontend,
-		Backend:  *backend,
+	handler := New(&handlers.Conf{
+		Frontend: frontend,
+		Backend:  backend,
 	})
 	handler(mux)
 	http.ListenAndServe(":8081", mux)
