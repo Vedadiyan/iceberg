@@ -36,6 +36,7 @@ type (
 		ExchangeHeaders []string `yaml:"exchangeHeaders"`
 		ExchangeBody    bool     `yaml:"exchangeBody"`
 	}
+	Server func() error
 )
 
 const (
@@ -70,7 +71,7 @@ func Parse(file string) (ApiVersion, any, error) {
 	}
 }
 
-func BuildV1(specV1 *SpecV1) (func() error, error) {
+func BuildV1(specV1 *SpecV1) (Server, error) {
 	mux := http.NewServeMux()
 	for _, resource := range specV1.Resources {
 		conf := handlers.Conf{}
