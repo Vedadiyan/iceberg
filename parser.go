@@ -94,11 +94,11 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					if err != nil {
 						return nil, err
 					}
-					f := handlers.HttpFilter{}
-					f.Address = url
-					f.ExchangeHeaders = filter.Conf.ExchangeHeaders
-					f.ExchangeBody = filter.Conf.ExchangeBody
-					filters = append(filters, &f)
+					httpFilter := handlers.HttpFilter{}
+					httpFilter.Address = url
+					httpFilter.ExchangeHeaders = filter.Conf.ExchangeHeaders
+					httpFilter.ExchangeBody = filter.Conf.ExchangeBody
+					filters = append(filters, &httpFilter)
 				}
 			}
 		}
