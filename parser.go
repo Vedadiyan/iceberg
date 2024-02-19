@@ -114,7 +114,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 				{
 					// Safe to use even if multiple registerations takes place
 					auto.Register(auto.New[string](url.Scheme, false, func(value string) {
-						di.AddScopedWithName[nats.Conn](url.Scheme, func() (instance *nats.Conn, err error) {
+						_ = di.AddScopedWithName[nats.Conn](url.Scheme, func() (instance *nats.Conn, err error) {
 							return nats.Connect(value)
 						})
 					}))
