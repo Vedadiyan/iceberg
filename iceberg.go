@@ -275,6 +275,11 @@ func Success(statusCode int) StatusCodeClass {
 }
 
 func main() {
+	xxx, err := url.Parse("default-nats:authorize.local:ok")
+	if err != nil {
+		panic(err)
+	}
+	_ = xxx
 	frontend, err := url.Parse("/comms")
 	_ = err
 	backend, err := url.Parse("ws://127.0.0.1:3000/comms")

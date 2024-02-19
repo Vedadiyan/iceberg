@@ -8,7 +8,7 @@ spec:
         filterChains: 
           - name: authorize
             type: http
-            listener: http://authorize.local
+            listener: default-nats://authorize.local
             level: "request|parallel"
             conf: 
               exchangeHeaders: 

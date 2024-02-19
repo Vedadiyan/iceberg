@@ -30,6 +30,7 @@ type (
 		Name      string `yaml:"name"`
 		Type      string `yaml:"type"`
 		Listerner string `yaml:"listener"`
+		Level     string `yaml:"level"`
 		Conf      ConfV1 `yaml:"conf"`
 	}
 	ConfV1 struct {
@@ -98,6 +99,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					httpFilter.Address = url
 					httpFilter.ExchangeHeaders = filter.Conf.ExchangeHeaders
 					httpFilter.ExchangeBody = filter.Conf.ExchangeBody
+					httpFilter.Level = Levels(filter.Level)
 					filters = append(filters, &httpFilter)
 				}
 			}
@@ -109,4 +111,26 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 	return func() error {
 		return http.ListenAndServe(specV1.Listen, mux)
 	}, nil
+}
+
+func Levels(level string) handlers.Level {
+	var output handlers.Level
+	levels := strings.Split(strings.ToLower(strings.Trim(level, " ")), "|")
+	for _, level := range levels {
+		switch level {
+		case "intercept":
+			{
+				output = output | handlers.INTERCEPT
+			}
+		case "post_process":
+			{
+				output = output | handlers.POST_PROCESS
+			}
+		case "parallel":
+			{
+				output = output | handlers.PARALLEL
+			}
+		}
+	}
+	return output
 }
