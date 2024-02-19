@@ -22,3 +22,7 @@ func (filter *HttpFilter) Handle(r *http.Request) (*http.Response, error) {
 func (filter *HttpFilter) Is(level Level) bool {
 	return filter.Level&level == level
 }
+
+func (filter *HttpFilter) MoveTo(res *http.Response, req *http.Request) error {
+	return nil
+}
