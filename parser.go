@@ -7,6 +7,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/nats-io/nats.go"
+	auto "github.com/vedadiyan/goal/pkg/config/auto"
+	"github.com/vedadiyan/goal/pkg/di"
 	"github.com/vedadiyan/iceberg/handlers"
 	"gopkg.in/yaml.v3"
 )
@@ -109,6 +112,12 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 				}
 			case "nats":
 				{
+					// Safe to use even if multiple registerations takes place
+					auto.Register(auto.New[string](url.Scheme, false, func(value string) {
+						di.AddScopedWithName[nats.Conn](url.Scheme, func() (instance *nats.Conn, err error) {
+							return nats.Connect(value)
+						})
+					}))
 					natsFilter := handlers.NATSFilter{}
 					natsFilter.Address = url
 					natsFilter.ExchangeHeaders = filter.Conf.ExchangeHeaders

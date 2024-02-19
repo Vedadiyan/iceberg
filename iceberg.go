@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	auto "github.com/vedadiyan/goal/pkg/config/auto"
 	"github.com/vedadiyan/iceberg/handlers"
 )
 
@@ -280,6 +281,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
+	auto.ForConfigMap().Bootstrap()
 	var server Server
 	switch ver {
 	case VER_V1:
