@@ -31,6 +31,7 @@ type (
 		Type      string `yaml:"type"`
 		Listerner string `yaml:"listener"`
 		Level     string `yaml:"level"`
+		Method    string `yaml:"method"`
 		Conf      ConfV1 `yaml:"conf"`
 	}
 	ConfV1 struct {
@@ -88,19 +89,30 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 		conf.Frontend = frontendUrl
 		filters := make([]handlers.Filter, 0)
 		for _, filter := range resource.FilterChains {
+			url, err := url.Parse(filter.Listerner)
+			if err != nil {
+				return nil, err
+			}
+			level := Levels(filter.Level)
 			switch strings.ToLower(filter.Type) {
 			case "http":
 				{
-					url, err := url.Parse(filter.Listerner)
-					if err != nil {
-						return nil, err
-					}
 					httpFilter := handlers.HttpFilter{}
 					httpFilter.Address = url
 					httpFilter.ExchangeHeaders = filter.Conf.ExchangeHeaders
 					httpFilter.ExchangeBody = filter.Conf.ExchangeBody
-					httpFilter.Level = Levels(filter.Level)
+					httpFilter.Level = level
+					httpFilter.Method = filter.Method
 					filters = append(filters, &httpFilter)
+				}
+			case "nats":
+				{
+					natsFilter := handlers.NATSFilter{}
+					natsFilter.Address = url
+					natsFilter.ExchangeHeaders = filter.Conf.ExchangeHeaders
+					natsFilter.ExchangeBody = filter.Conf.ExchangeBody
+					natsFilter.Level = level
+					filters = append(filters, &natsFilter)
 				}
 			}
 		}
