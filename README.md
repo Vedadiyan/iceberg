@@ -45,8 +45,8 @@ Key configuration options:
 - resources - Named resources that can be referenced
     - frontend - Route to listen on
     - backend - Route to proxy to main container
-    - name - Name of filter chain
     - filterChains - One or more filter chains to define
+        - name - Name of filter chain
         - listener - Frontend listener protocol/address
         - level - Filter level (request, response, parallel)
         - exchange - Headers and body to exchange with backend
