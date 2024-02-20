@@ -43,13 +43,13 @@ iceberg is configured via a YAML file specified in the `ICEBERG_CONFIG` environm
 Key configuration options:
 - listen - Address and port iceberg listens on
 - resources - Named resources that can be referenced
-- filterChains - One or more filter chains to define
-- name - Name of filter chain
-- listener - Frontend listener protocol/address
-- level - Filter level (request, response, parallel)
-- exchange - Headers and body to exchange with backend
-- frontend - Route to listen on
-- backend - Route to proxy to main container
+    - frontend - Route to listen on
+    - backend - Route to proxy to main container
+    - name - Name of filter chain
+    - filterChains - One or more filter chains to define
+        - listener - Frontend listener protocol/address
+        - level - Filter level (request, response, parallel)
+        - exchange - Headers and body to exchange with backend
 
 To specify a host via environment variable, use [[envvar]] syntax.
 
