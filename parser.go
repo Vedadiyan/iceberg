@@ -31,7 +31,6 @@ type (
 	}
 	FilterChainV1 struct {
 		Name      string `yaml:"name"`
-		Type      string `yaml:"type"`
 		Listerner string `yaml:"listener"`
 		Level     string `yaml:"level"`
 		Method    string `yaml:"method"`
@@ -98,9 +97,14 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 				return nil, err
 			}
 			level := Levels(filter.Level)
-			switch strings.ToLower(filter.Type) {
-			case "http":
+			switch strings.ToLower(url.Scheme) {
+			case "http", "https":
 				{
+					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
+						auto.Register(auto.New[string](strings.TrimPrefix(strings.TrimSuffix(url.Host, "[["), "]]"), false, func(value string) {
+							url.Host = value
+						}))
+					}
 					httpFilter := handlers.HttpFilter{}
 					httpFilter.Address = url
 					httpFilter.ExchangeHeaders = filter.Conf.ExchangeHeaders
@@ -112,18 +116,26 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 				}
 			case "nats":
 				{
-					// Safe to use even if multiple registerations takes place
-					auto.Register(auto.New[string](url.Scheme, false, func(value string) {
-						_ = di.AddScopedWithName[nats.Conn](url.Scheme, func() (instance *nats.Conn, err error) {
-							return nats.Connect(value)
+					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
+						url.Host = strings.TrimPrefix(strings.TrimSuffix(url.Host, "[["), "]]")
+						auto.Register(auto.New[string](url.Host, false, func(value string) {
+							_ = di.AddScopedWithName[nats.Conn](url.Host, func() (instance *nats.Conn, err error) {
+								return nats.Connect(value)
+							})
+						}))
+					} else {
+						_ = di.AddScopedWithName[nats.Conn](url.Host, func() (instance *nats.Conn, err error) {
+							return nats.Connect(url.Host)
 						})
-					}))
+					}
 					natsFilter := handlers.NATSFilter{}
 					natsFilter.Address = url
 					natsFilter.ExchangeHeaders = filter.Conf.ExchangeHeaders
 					natsFilter.ExchangeBody = filter.Conf.ExchangeBody
 					natsFilter.Level = level
 					natsFilter.Timeout = filter.Timeout
+					natsFilter.Url = url.Host
+					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
 					filters = append(filters, &natsFilter)
 				}
 			}

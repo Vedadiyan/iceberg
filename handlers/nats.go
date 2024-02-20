@@ -13,6 +13,8 @@ import (
 type (
 	NATSFilter struct {
 		FilterBase
+		Url     string
+		Subject string
 	}
 )
 
@@ -25,12 +27,12 @@ func (filter *NATSFilter) Handle(r *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := di.ResolveWithName[nats.Conn](filter.Address.Scheme, nil)
+	conn, err := di.ResolveWithName[nats.Conn](filter.Url, nil)
 	if err != nil {
 		return nil, err
 	}
 	msg := nats.Msg{}
-	msg.Subject = filter.Address.Opaque
+	msg.Subject = filter.Subject
 	msg.Data = data
 	msg.Header = nats.Header{}
 	for key, values := range req.Header {

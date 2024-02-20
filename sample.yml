@@ -7,8 +7,7 @@ spec:
         backend: 127.0.0.1:8080/test
         filterChains: 
           - name: authorize
-            type: http
-            listener: default-nats://authorize.local
+            listener: "nats://[[default-nats]]/test.message.ok.>"
             level: "request|parallel"
             conf: 
               exchangeHeaders: 
