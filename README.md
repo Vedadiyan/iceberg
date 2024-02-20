@@ -1,3 +1,6 @@
+![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.20-%23007d9c)
+[![Go report](https://goreportcard.com/badge/github.com/vedadiyan/iceberg)](https://goreportcard.com/report/github.com/vedadiyan/iceberg)
+
 <p align="center">
   <img width="250px" src="https://cdn-icons-png.flaticon.com/512/6362/6362931.png" />
 </p>
