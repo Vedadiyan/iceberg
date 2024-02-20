@@ -30,16 +30,16 @@ type (
 		FilterChains []FilterChainV1 `yaml:"filterChain"`
 	}
 	FilterChainV1 struct {
-		Name      string `yaml:"name"`
-		Listerner string `yaml:"listener"`
-		Level     string `yaml:"level"`
-		Method    string `yaml:"method"`
-		Conf      ConfV1 `yaml:"conf"`
-		Timeout   int    `yaml:"timeout"`
+		Name      string     `yaml:"name"`
+		Listerner string     `yaml:"listener"`
+		Level     string     `yaml:"level"`
+		Method    string     `yaml:"method"`
+		Exchange  ExchangeV1 `yaml:"exchange"`
+		Timeout   int        `yaml:"timeout"`
 	}
-	ConfV1 struct {
-		ExchangeHeaders []string `yaml:"exchangeHeaders"`
-		ExchangeBody    bool     `yaml:"exchangeBody"`
+	ExchangeV1 struct {
+		Headers []string `yaml:"headers"`
+		Body    bool     `yaml:"body"`
 	}
 	Server func() error
 )
@@ -108,8 +108,8 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					}
 					httpFilter := handlers.HttpFilter{}
 					httpFilter.Address = url
-					httpFilter.ExchangeHeaders = filter.Conf.ExchangeHeaders
-					httpFilter.ExchangeBody = filter.Conf.ExchangeBody
+					httpFilter.ExchangeHeaders = filter.Exchange.Headers
+					httpFilter.ExchangeBody = filter.Exchange.Body
 					httpFilter.Level = level
 					httpFilter.Method = filter.Method
 					httpFilter.Timeout = filter.Timeout
@@ -131,8 +131,8 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					}
 					natsFilter := handlers.NATSFilter{}
 					natsFilter.Address = url
-					natsFilter.ExchangeHeaders = filter.Conf.ExchangeHeaders
-					natsFilter.ExchangeBody = filter.Conf.ExchangeBody
+					natsFilter.ExchangeHeaders = filter.Exchange.Headers
+					natsFilter.ExchangeBody = filter.Exchange.Body
 					natsFilter.Level = level
 					natsFilter.Timeout = filter.Timeout
 					natsFilter.Url = url.Host

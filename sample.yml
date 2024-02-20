@@ -9,12 +9,10 @@ spec:
           - name: authorize
             listener: "nats://[[default-nats]]/test.message.ok.>"
             level: "request|parallel"
-            conf: 
-              exchangeHeaders: 
+            exchange: 
+              headers: 
                 - X-User-Token
-              dropHeaders: 
-                - X-Forwarded-For
-              exchangeBody: false
+              body: false
 
 
 
