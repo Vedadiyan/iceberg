@@ -26,17 +26,19 @@ iceberg is configured via a YAML file specified in the `ICEBERG_CONFIG` environm
 
     apiVersion: iceberg/v1
     spec:
-        listen: ":8081"
+      listen: ":8081"
         resources:
-            - name: Some Name
-            filterChains:
-                - name: authorize
-                listener: "nats://[[default-nats]]/test.message.ok.>" 
+          - name: Some Name
+            frontend: /test
+            backend: 127.0.0.1:8080/test
+            filterChains: 
+              - name: authorize
+                listener: "nats://[[default-nats]]/test.message.ok.>"
                 level: "request|parallel"
-                exchange:
-                    headers:
+                exchange: 
+                  headers: 
                     - X-User-Token
-                    body: false
+                  body: false
 
 Key configuration options:
 - listen - Address and port iceberg listens on
