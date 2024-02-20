@@ -59,18 +59,18 @@ Deploy iceberg sidecar container in pod alongside main app container. Main conta
 
 Example pod spec:
 
-        spec:
-            containers:
-                - name: main-app
-                # main app image
-                - name: iceberg 
-                image: iceberg
-                env:
-                    - name: ICEBERG_CONFIG
-                    value: |
-                        # iceberg config here
-                ports:
-                    - containerPort: 8081
+    spec:
+        containers:
+            - name: main-app
+            # main app image
+            - name: iceberg 
+            image: iceberg
+            env:
+                - name: ICEBERG_CONFIG
+                value: |
+                    # iceberg config here
+            ports:
+                - containerPort: 8081
         
 This exposes the iceberg proxy on port 8081 to handle all incoming traffic to the pod. Main app container is accessed internally as the backend.
 
