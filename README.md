@@ -20,7 +20,7 @@ Filters for:
 - Ignore exchange mechanism for parallel filters
 
 ## Configuration
-iceberg is configured via a YAML file specified in the ICEBERG_CONFIG environment variable.
+iceberg is configured via a YAML file specified in the `ICEBERG_CONFIG` environment variable.
 
 ### Example configuration:
 
