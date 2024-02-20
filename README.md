@@ -8,9 +8,9 @@ Proxy requests to main app as backend
 Define filter chains to transform requests and responses
 Support filters using different protocols:
 - HTTP/HTTPS
-- gRPC
+- gRPC (In Development)
 - NATS
-- Websocket
+- Websocket (In Development)
 
 Filters for:
 - Intercepting requests
