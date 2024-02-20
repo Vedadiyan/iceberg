@@ -29,14 +29,14 @@ iceberg is configured via a YAML file specified in the `ICEBERG_CONFIG` environm
         listen: ":8081"
         resources:
             - name: Some Name
-        filterChains:
-            - name: authorize
-            listener: "nats://[[default-nats]]/test.message.ok.>" 
-            level: "request|parallel"
-            exchange:
-                headers:
-                - X-User-Token
-                body: false
+            filterChains:
+                - name: authorize
+                listener: "nats://[[default-nats]]/test.message.ok.>" 
+                level: "request|parallel"
+                exchange:
+                    headers:
+                    - X-User-Token
+                    body: false
 
 Key configuration options:
 - listen - Address and port iceberg listens on
