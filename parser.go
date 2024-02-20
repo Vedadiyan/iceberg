@@ -101,7 +101,8 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 			case "http", "https":
 				{
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
-						auto.Register(auto.New[string](strings.TrimPrefix(strings.TrimSuffix(url.Host, "[["), "]]"), false, func(value string) {
+						host := strings.TrimPrefix(strings.TrimSuffix(url.Host, "[["), "]]")
+						auto.Register(auto.New[string](host, false, func(value string) {
 							url.Host = value
 						}))
 					}
