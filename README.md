@@ -19,10 +19,10 @@ Filters for:
 - Exchange headers and body between filter and main traffic
 - Ignore exchange mechanism for parallel filters
 
-Configuration
+## Configuration
 iceberg is configured via a YAML file specified in the ICEBERG_CONFIG environment variable.
 
-## Example configuration:
+### Example configuration:
 
     apiVersion: iceberg/v1
         spec:
