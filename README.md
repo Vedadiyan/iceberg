@@ -1,7 +1,7 @@
 # iceberg
 iceberg is a Kubernetes sidecar proxy that can intercept and filter traffic between the main application container and clients. It provides a flexible way to handle cross-cutting concerns like security, monitoring, and more.
 
-##Features
+## Features
 Deploy as sidecar container alongside main app container
 Listen on HTTP/HTTPS or Websocket as frontend
 Proxy requests to main app as backend
