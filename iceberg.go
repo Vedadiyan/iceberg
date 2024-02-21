@@ -118,22 +118,49 @@ func (wsp *WebSocketProxy) ResponseHandler() {
 		}
 		message, err := io.ReadAll(data)
 		if err != nil {
+			wsp.Conn.WriteJSON(HandlerError{
+				Class:      HANDLER_ERROR_INTERNAL,
+				StatusCode: 500,
+				Message:    err.Error(),
+			})
 			continue
 		}
 		req, err := http.NewRequest("", "", bytes.NewBuffer(message))
 		if err != nil {
+			wsp.Conn.WriteJSON(HandlerError{
+				Class:      HANDLER_ERROR_INTERNAL,
+				StatusCode: 500,
+				Message:    err.Error(),
+			})
 			continue
 		}
 		err = Filter(req, wsp.Conf.Filters, handlers.RESPONSE)
 		if err != nil {
+			if handlerError, ok := err.(HandlerError); ok {
+				wsp.Conn.WriteJSON(handlerError)
+				return
+			}
+			wsp.Conn.WriteJSON(HandlerError{
+				StatusCode: 418,
+			})
 			continue
 		}
 		message, err = io.ReadAll(req.Body)
 		if err != nil {
+			wsp.Conn.WriteJSON(HandlerError{
+				Class:      HANDLER_ERROR_INTERNAL,
+				StatusCode: 500,
+				Message:    err.Error(),
+			})
 			continue
 		}
 		err = wsp.Conn.WriteMessage(messageType, message)
 		if err != nil {
+			wsp.Conn.WriteJSON(HandlerError{
+				Class:      HANDLER_ERROR_INTERNAL,
+				StatusCode: 500,
+				Message:    err.Error(),
+			})
 			continue
 		}
 	}
