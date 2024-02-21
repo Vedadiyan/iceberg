@@ -26,7 +26,6 @@ var (
 	_codec = GRPCCodec{}
 )
 
-// Marshal implements encoding.Codec.
 func (GRPCCodec) Marshal(v any) ([]byte, error) {
 	bytes, ok := v.([]byte)
 	if !ok {
@@ -35,12 +34,10 @@ func (GRPCCodec) Marshal(v any) ([]byte, error) {
 	return bytes, nil
 }
 
-// Name implements encoding.Codec.
 func (GRPCCodec) Name() string {
 	return "icerbeg"
 }
 
-// Unmarshal implements encoding.Codec.
 func (GRPCCodec) Unmarshal(data []byte, v any) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
