@@ -3,8 +3,10 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 
 	"github.com/vedadiyan/goal/pkg/di"
 	"google.golang.org/grpc"
@@ -26,17 +28,31 @@ var (
 
 // Marshal implements encoding.Codec.
 func (GRPCCodec) Marshal(v any) ([]byte, error) {
-	panic("unimplemented")
+	bytes, ok := v.([]byte)
+	if !ok {
+		return nil, fmt.Errorf("%T is not supported", v)
+	}
+	return bytes, nil
 }
 
 // Name implements encoding.Codec.
 func (GRPCCodec) Name() string {
-	panic("unimplemented")
+	return "icerbeg"
 }
 
 // Unmarshal implements encoding.Codec.
-func (GRPCCodec) Unmarshal(data []byte, v any) error {
-	panic("unimplemented")
+func (GRPCCodec) Unmarshal(data []byte, v any) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%v", r)
+		}
+	}()
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Pointer || rv.IsNil() {
+		return fmt.Errorf("expected not nil pointer but found %T", v)
+	}
+	rv.Elem().Set(reflect.ValueOf(data))
+	return nil
 }
 
 func (filter *GRPCFilter) Handle(r *http.Request) (*http.Response, error) {
