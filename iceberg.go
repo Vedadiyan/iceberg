@@ -138,7 +138,7 @@ func (wsp *WebSocketProxy) ResponseHandler() {
 		if err != nil {
 			if handlerError, ok := err.(HandlerError); ok {
 				wsp.Conn.WriteJSON(handlerError)
-				return
+				continue
 			}
 			wsp.Conn.WriteJSON(HandlerError{
 				StatusCode: 418,
