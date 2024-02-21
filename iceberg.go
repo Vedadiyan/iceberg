@@ -77,7 +77,7 @@ func IsWebSocket(r *http.Request) bool {
 }
 
 func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
-	err := FilterRequest(r, conf.Filters)
+	err := Filter(r, conf.Filters, handlers.REQUEST)
 	if err != nil {
 		if handlerError, ok := err.(HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
@@ -91,7 +91,7 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	err = FilterResponse(r, conf.Filters)
+	err = Filter(r, conf.Filters, handlers.RESPONSE)
 	if err != nil {
 		return
 	}
@@ -108,6 +108,16 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 }
 
 func WebSocketHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
+	err := Filter(r, conf.Filters, handlers.CONNECT)
+	if err != nil {
+		if handlerError, ok := err.(HandlerError); ok {
+			w.WriteHeader(handlerError.StatusCode)
+			w.Write([]byte(handlerError.Message))
+			return
+		}
+		w.WriteHeader(418)
+		return
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
@@ -147,7 +157,7 @@ func WebSocketHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Reques
 				return
 			}
 			req.Body = io.NopCloser(bytes.NewBuffer(message))
-			err = FilterRequest(req, conf.Filters)
+			err = Filter(req, conf.Filters, handlers.REQUEST)
 			if err != nil {
 				if handlerError, ok := err.(HandlerError); ok {
 					conn.WriteJSON(handlerError)
@@ -188,7 +198,7 @@ func WebSocketHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Reques
 			if err != nil {
 				continue
 			}
-			err = FilterResponse(req, conf.Filters)
+			err = Filter(req, conf.Filters, handlers.RESPONSE)
 			if err != nil {
 				continue
 			}
@@ -229,26 +239,9 @@ func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	return nil
 }
 
-func FilterRequest(r *http.Request, filters []handlers.Filter) error {
+func Filter(r *http.Request, filters []handlers.Filter, level handlers.Level) error {
 	for _, filter := range filters {
-		if !filter.Is(handlers.INTERCEPT) {
-			continue
-		}
-		if !filter.Is(handlers.PARALLEL) {
-			err := HandlerFunc(r, filter)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-		go HandlerFunc(r, filter)
-	}
-	return nil
-}
-
-func FilterResponse(r *http.Request, filters []handlers.Filter) error {
-	for _, filter := range filters {
-		if !filter.Is(handlers.POST_PROCESS) {
+		if !filter.Is(level) {
 			continue
 		}
 		if !filter.Is(handlers.PARALLEL) {

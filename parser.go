@@ -157,11 +157,11 @@ func Levels(level string) handlers.Level {
 		switch level {
 		case "intercept":
 			{
-				output = output | handlers.INTERCEPT
+				output = output | handlers.REQUEST
 			}
 		case "post_process":
 			{
-				output = output | handlers.POST_PROCESS
+				output = output | handlers.RESPONSE
 			}
 		case "parallel":
 			{
