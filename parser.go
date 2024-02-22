@@ -11,6 +11,7 @@ import (
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
 	"github.com/vedadiyan/goal/pkg/di"
 	"github.com/vedadiyan/iceberg/handlers"
+	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
 )
 
@@ -138,6 +139,30 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					natsFilter.Url = url.Host
 					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
 					filters = append(filters, &natsFilter)
+				}
+			case "grpc":
+				{
+					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
+						url.Host = strings.TrimPrefix(strings.TrimSuffix(url.Host, "[["), "]]")
+						auto.Register(auto.New[string](url.Host, false, func(value string) {
+							_ = di.AddScopedWithName[grpc.ClientConn](url.Host, func() (instance *grpc.ClientConn, err error) {
+								return grpc.Dial(value)
+							})
+						}))
+					} else {
+						_ = di.AddScopedWithName[grpc.ClientConn](url.Host, func() (instance *grpc.ClientConn, err error) {
+							return grpc.Dial(url.Host)
+						})
+					}
+					grpcFilter := handlers.GRPCFilter{}
+					grpcFilter.Address = url
+					grpcFilter.ExchangeHeaders = filter.Exchange.Headers
+					grpcFilter.ExchangeBody = filter.Exchange.Body
+					grpcFilter.Level = level
+					grpcFilter.Timeout = filter.Timeout
+					grpcFilter.Url = url.Host
+					grpcFilter.Subject = strings.TrimPrefix(url.Path, "/")
+					filters = append(filters, &grpcFilter)
 				}
 			}
 		}
