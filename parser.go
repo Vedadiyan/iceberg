@@ -21,14 +21,16 @@ type (
 		ApiVersion string `yaml:"apiVersion"`
 	}
 	SpecV1 struct {
-		Listen    string       `yaml:"listen"`
-		Resources []ResourceV1 `yaml:"recource"`
+		Spec struct {
+			Listen    string       `yaml:"listen"`
+			Resources []ResourceV1 `yaml:"resources"`
+		} `yaml:"spec"`
 	}
 	ResourceV1 struct {
 		Name         string          `yaml:"name"`
 		Frontend     string          `yaml:"frontend"`
 		Backend      string          `yaml:"backend"`
-		FilterChains []FilterChainV1 `yaml:"filterChain"`
+		FilterChains []FilterChainV1 `yaml:"filterChains"`
 	}
 	FilterChainV1 struct {
 		Name      string     `yaml:"name"`
@@ -51,12 +53,21 @@ const (
 )
 
 func Parse() (ApiVersion, any, error) {
+
+	//DEBUG
+	config, err := os.ReadFile("sample.yml")
+	if err != nil {
+		return VER_NONE, nil, err
+	}
+	os.Setenv("ICEBERG_CONFIG", string(config))
+	//END
+
 	data := os.Getenv("ICEBERG_CONFIG")
 	if len(data) == 0 {
 		return VER_NONE, nil, fmt.Errorf("iceberg config not found")
 	}
 	version := Version{}
-	err := yaml.Unmarshal([]byte(data), &version)
+	err = yaml.Unmarshal([]byte(data), &version)
 	if err != nil {
 		return VER_NONE, nil, err
 	}
@@ -79,7 +90,7 @@ func Parse() (ApiVersion, any, error) {
 
 func BuildV1(specV1 *SpecV1) (Server, error) {
 	mux := http.NewServeMux()
-	for _, resource := range specV1.Resources {
+	for _, resource := range specV1.Spec.Resources {
 		conf := handlers.Conf{}
 		backendUrl, err := url.Parse(resource.Backend)
 		if err != nil {
@@ -171,7 +182,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 		handler(mux)
 	}
 	return func() error {
-		return http.ListenAndServe(specV1.Listen, mux)
+		return http.ListenAndServe(specV1.Spec.Listen, mux)
 	}, nil
 }
 

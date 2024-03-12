@@ -1,18 +1,15 @@
 apiVersion: iceberg/v1
 spec:
   listen: ":8081"
-    resources:
-      - name: Some Name
-        frontend: /test
-        backend: 127.0.0.1:8080/test
-        filterChains: 
-          - name: authorize
-            listener: "nats://[[default-nats]]/test.message.ok.>"
-            level: "request|parallel"
-            exchange: 
-              headers: 
-                - X-User-Token
-              body: false
-
-
-
+  resources:
+    - name: Some Name
+      frontend: /test/
+      backend: http://127.0.0.1:8080/test
+      filterChains: 
+        - name: authorize
+          listener: "nats://[[default-nats]]/test.message.ok.>"
+          level: "request|parallel"
+          exchange: 
+            headers: 
+              - X-User-Token
+            body: false

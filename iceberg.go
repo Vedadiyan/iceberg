@@ -227,10 +227,17 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	}
 	r, err = handlers.RequestFrom(HttpProxy(r, conf.Backend))
 	if err != nil {
+		w.WriteHeader(502)
 		return
 	}
 	err = Filter(r, conf.Filters, handlers.RESPONSE)
 	if err != nil {
+		if handlerError, ok := err.(HandlerError); ok {
+			w.WriteHeader(handlerError.StatusCode)
+			w.Write([]byte(handlerError.Message))
+			return
+		}
+		w.WriteHeader(418)
 		return
 	}
 	for key, values := range r.Header {
@@ -240,6 +247,7 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		w.WriteHeader(500)
 		return
 	}
 	w.Write(body)
