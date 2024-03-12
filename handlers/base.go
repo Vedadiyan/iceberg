@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"net/http"
 	"net/url"
@@ -43,16 +42,58 @@ const (
 	PARALLEL Level = 16
 )
 
-func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, error) {
+func cloneURL(u *url.URL) *url.URL {
+	if u == nil {
+		return nil
+	}
+	u2 := new(url.URL)
+	*u2 = *u
+	if u.User != nil {
+		u2.User = new(url.Userinfo)
+		*u2.User = *u.User
+	}
+	return u2
+}
+func cloneURLValues(v url.Values) url.Values {
+	if v == nil {
+		return nil
+	}
+	return url.Values(http.Header(v).Clone())
+}
 
-	clone := r.Clone(context.TODO())
-	body, err := io.ReadAll(clone.Body)
+func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, error) {
+	r2 := new(http.Request)
+	request := Request{
+		Url:    r.URL,
+		Method: r.Method,
+	}
+	for _, option := range options {
+		option(&request)
+	}
+	r2.URL = cloneURL(r.URL)
+	if r.Header != nil {
+		r2.Header = r.Header.Clone()
+	}
+	if r.Trailer != nil {
+		r2.Trailer = r.Trailer.Clone()
+	}
+	if s := r.TransferEncoding; s != nil {
+		s2 := make([]string, len(s))
+		copy(s2, s)
+		r2.TransferEncoding = s2
+	}
+	r2.Form = cloneURLValues(r.Form)
+	r2.PostForm = cloneURLValues(r.PostForm)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
-	r.Body = io.NopCloser(bytes.NewBuffer(body))
-	clone.Body = io.NopCloser(bytes.NewBuffer(body))
-	return clone, nil
+	(*r).Body = io.NopCloser(bytes.NewBuffer(body))
+	(*r2).Body = io.NopCloser(bytes.NewBuffer(body))
+	(*r2).URL.Host = request.Url.Host
+	(*r2).URL.Scheme = request.Url.Scheme
+	(*r2).Host = request.Url.Host
+	return r2, nil
 }
 
 func RequestFrom(res *http.Response, err error) (*http.Request, error) {

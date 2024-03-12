@@ -8,7 +8,7 @@ spec:
       filterChains: 
         - name: payment-intent
           listener: "nats://[[default-nats]]/internal.middleware.paymentintent"
-          level: "request"
+          level: "response"
           timeout: 30
           exchange: 
             headers: 
