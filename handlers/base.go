@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"net/url"
@@ -43,19 +44,14 @@ const (
 )
 
 func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, error) {
-	request := Request{
-		Url:    r.URL,
-		Method: r.Method,
-	}
-	for _, option := range options {
-		option(&request)
-	}
-	body, err := io.ReadAll(r.Body)
+	clone := r.Clone(context.TODO())
+	body, err := io.ReadAll(clone.Body)
 	if err != nil {
 		return nil, err
 	}
-	(*r).Body = io.NopCloser(bytes.NewBuffer(body))
-	return http.NewRequest(request.Method, request.Url.String(), io.NopCloser(bytes.NewBuffer(body)))
+	r.Body = io.NopCloser(bytes.NewBuffer(body))
+	clone.Body = io.NopCloser(bytes.NewBuffer(body))
+	return clone, nil
 }
 
 func RequestFrom(res *http.Response, err error) (*http.Request, error) {

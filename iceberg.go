@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/gorilla/websocket"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
@@ -329,11 +330,11 @@ func Success(statusCode int) StatusCodeClass {
 }
 
 func main() {
+	os.Setenv("default-nats", "nats://192.168.107.107:4222")
 	ver, conf, err := Parse()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
-	auto.ForConfigMap().Bootstrap()
 	var server Server
 	switch ver {
 	case VER_V1:
@@ -352,6 +353,7 @@ func main() {
 			log.Fatalln("unsupported api version")
 		}
 	}
+	auto.ForConfigMap().Bootstrap()
 	err = server()
 	if err != nil {
 		log.Fatalln(err.Error())

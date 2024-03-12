@@ -113,7 +113,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 			case "http", "https":
 				{
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
-						host := strings.TrimPrefix(strings.TrimSuffix(url.Host, "[["), "]]")
+						host := strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
 						auto.Register(auto.New[string](host, false, func(value string) {
 							url.Host = value
 						}))
@@ -130,14 +130,14 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 			case "nats":
 				{
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
-						url.Host = strings.TrimPrefix(strings.TrimSuffix(url.Host, "[["), "]]")
+						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
 						auto.Register(auto.New[string](url.Host, false, func(value string) {
-							_ = di.AddScopedWithName[nats.Conn](url.Host, func() (instance *nats.Conn, err error) {
+							_ = di.AddSinletonWithName[nats.Conn](url.Host, func() (instance *nats.Conn, err error) {
 								return nats.Connect(value)
 							})
 						}))
 					} else {
-						_ = di.AddScopedWithName[nats.Conn](url.Host, func() (instance *nats.Conn, err error) {
+						_ = di.AddSinletonWithName[nats.Conn](url.Host, func() (instance *nats.Conn, err error) {
 							return nats.Connect(url.Host)
 						})
 					}
@@ -154,14 +154,14 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 			case "grpc":
 				{
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
-						url.Host = strings.TrimPrefix(strings.TrimSuffix(url.Host, "[["), "]]")
+						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
 						auto.Register(auto.New[string](url.Host, false, func(value string) {
-							_ = di.AddScopedWithName[grpc.ClientConn](url.Host, func() (instance *grpc.ClientConn, err error) {
+							_ = di.AddSinletonWithName[grpc.ClientConn](url.Host, func() (instance *grpc.ClientConn, err error) {
 								return grpc.Dial(value)
 							})
 						}))
 					} else {
-						_ = di.AddScopedWithName[grpc.ClientConn](url.Host, func() (instance *grpc.ClientConn, err error) {
+						_ = di.AddSinletonWithName[grpc.ClientConn](url.Host, func() (instance *grpc.ClientConn, err error) {
 							return grpc.Dial(url.Host)
 						})
 					}
