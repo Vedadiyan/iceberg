@@ -2,14 +2,14 @@ apiVersion: iceberg/v1
 spec:
   listen: ":8081"
   resources:
-    - name: Some Name
-      frontend: /test/
-      backend: http://127.0.0.1:8080/test
+    - name: freeze
+      frontend: /
+      backend: https://google.com
       filterChains: 
-        - name: authorize
-          listener: "nats://[[default-nats]]/test.message.ok.>"
+        - name: payment-intent
+          listener: "nats://[[default-nats]]/internal.middleware.paymentintent"
           level: "request"
+          timeout: 30
           exchange: 
             headers: 
-              - X-User-Token
-            body: false
+              - x-payment-token

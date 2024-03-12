@@ -289,7 +289,7 @@ func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	if err != nil {
 		return NewHandlerError(HANDLER_ERROR_INTERNAL, res.StatusCode, err.Error())
 	}
-	if StatusCodeClass(res.StatusCode) != STATUS_SUCCESS {
+	if res.Header.Get("status") != "200" {
 		return NewHandlerError(HANDLER_ERROR_FILTER, res.StatusCode, res.Status)
 	}
 	err = filter.MoveTo(res, r)

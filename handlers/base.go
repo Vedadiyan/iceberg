@@ -44,6 +44,7 @@ const (
 )
 
 func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, error) {
+
 	clone := r.Clone(context.TODO())
 	body, err := io.ReadAll(clone.Body)
 	if err != nil {
@@ -91,12 +92,8 @@ func (filter *FilterBase) MoveTo(res *http.Response, req *http.Request) error {
 		return nil
 	}
 	for _, header := range filter.ExchangeHeaders {
-		values := res.Header[header]
-		if len(values) > 0 {
-			for _, value := range values {
-				req.Header.Add(header, value)
-			}
-		}
+		values := res.Header.Get(header)
+		req.Header.Add(header, values)
 	}
 	if filter.ExchangeBody {
 		req.Body = res.Body
