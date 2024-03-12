@@ -40,6 +40,8 @@ func (filter *NATSFilter) Handle(r *http.Request) (*http.Response, error) {
 			msg.Header.Add(key, value)
 		}
 	}
+	msg.Header.Add("path", req.URL.RawPath)
+	msg.Header.Add("query", req.URL.RawQuery)
 	res, err := conn.RequestMsg(&msg, time.Second*time.Duration(filter.Timeout))
 	if err != nil {
 		return nil, err

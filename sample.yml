@@ -8,7 +8,7 @@ spec:
       filterChains: 
         - name: authorize
           listener: "nats://[[default-nats]]/test.message.ok.>"
-          level: "request|parallel"
+          level: "request"
           exchange: 
             headers: 
               - X-User-Token

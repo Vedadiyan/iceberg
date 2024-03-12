@@ -191,11 +191,11 @@ func Levels(level string) handlers.Level {
 	levels := strings.Split(strings.ToLower(strings.Trim(level, " ")), "|")
 	for _, level := range levels {
 		switch level {
-		case "intercept":
+		case "request":
 			{
 				output = output | handlers.REQUEST
 			}
-		case "post_process":
+		case "response":
 			{
 				output = output | handlers.RESPONSE
 			}
