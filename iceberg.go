@@ -233,11 +233,6 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	}
 	*res.URL = *r.URL
 	*r = *res
-	for key, values := range r.Header {
-		for _, value := range values {
-			res.Header.Add(key, value)
-		}
-	}
 	err = Filter(r, conf.Filters, handlers.RESPONSE)
 	if err != nil {
 		if handlerError, ok := err.(HandlerError); ok {
