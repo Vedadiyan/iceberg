@@ -134,6 +134,7 @@ func (filter *FilterBase) MoveTo(res *http.Response, req *http.Request) error {
 	}
 	for _, header := range filter.ExchangeHeaders {
 		values := res.Header.Get(header)
+		req.Header.Del(header)
 		req.Header.Add(header, values)
 	}
 	if filter.ExchangeBody {
