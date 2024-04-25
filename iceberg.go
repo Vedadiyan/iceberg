@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
@@ -290,7 +291,7 @@ func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	if err != nil {
 		return NewHandlerError(HANDLER_ERROR_INTERNAL, res.StatusCode, err.Error())
 	}
-	if res.Header.Get("status") != "200" {
+	if res.Header.Get("status") != "200" && strings.ToLower(res.Header.Get("x-continue-with-error")) != "true" {
 		return NewHandlerError(HANDLER_ERROR_FILTER, res.StatusCode, res.Status)
 	}
 	err = filter.MoveTo(res, r)
