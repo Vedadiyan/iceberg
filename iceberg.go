@@ -227,11 +227,13 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(418)
 		return
 	}
+	url := *r.URL
 	r, err = handlers.RequestFrom(HttpProxy(r, conf.Backend))
 	if err != nil {
 		w.WriteHeader(502)
 		return
 	}
+	r.URL = &url
 	err = Filter(r, conf.Filters, handlers.RESPONSE)
 	if err != nil {
 		if handlerError, ok := err.(HandlerError); ok {
