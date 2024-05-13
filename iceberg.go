@@ -285,6 +285,9 @@ func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	if res.StatusCode%200 >= 100 {
+		return nil, fmt.Errorf(res.Status)
+	}
 	return res, nil
 }
 
