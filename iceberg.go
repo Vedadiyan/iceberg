@@ -16,6 +16,7 @@ import (
 )
 
 type (
+	KnownHeader       string
 	StatusCodeClass   int
 	Handler           func(*http.ServeMux)
 	HandlerErrorClass int
@@ -43,6 +44,8 @@ const (
 	HANDLER_ERROR_INTERNAL HandlerErrorClass = 0
 	HANDLER_ERROR_FILTER   HandlerErrorClass = 1
 	HANDLER_ERROR_PROXY    HandlerErrorClass = 2
+
+	HEADER_CONTINUE_ON_ERROR KnownHeader = "x-continue-on-error"
 )
 
 var (
@@ -287,7 +290,7 @@ func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode%200 >= 100 && strings.ToLower(res.Header.Get("x-continue-with-error")) != "true" {
+	if res.StatusCode%200 >= 100 && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
 		return nil, NewHandlerError(HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
 	}
 	return res, nil
@@ -298,7 +301,7 @@ func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	if err != nil {
 		return NewHandlerError(HANDLER_ERROR_INTERNAL, res.StatusCode, err.Error())
 	}
-	if res.Header.Get("status") != "200" && strings.ToLower(res.Header.Get("x-continue-with-error")) != "true" {
+	if res.Header.Get("status") != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
 		return NewHandlerError(HANDLER_ERROR_FILTER, res.StatusCode, res.Status)
 	}
 	err = filter.MoveTo(res, r)
