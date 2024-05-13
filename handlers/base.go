@@ -32,7 +32,7 @@ type (
 		Url    *url.URL
 		Method string
 	}
-	RequestOption func(*Request)
+	RequestOption func(*http.Request)
 )
 
 const (
@@ -67,9 +67,6 @@ func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, err
 		Url:    r.URL,
 		Method: r.Method,
 	}
-	for _, option := range options {
-		option(&request)
-	}
 	r2.URL = cloneURL(r.URL)
 	if r.Header != nil {
 		r2.Header = r.Header.Clone()
@@ -93,6 +90,9 @@ func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, err
 	(*r2).URL.Host = request.Url.Host
 	(*r2).URL.Scheme = request.Url.Scheme
 	(*r2).Host = request.Url.Host
+	for _, option := range options {
+		option(r2)
+	}
 	return r2, nil
 }
 
@@ -113,13 +113,15 @@ func RequestFrom(res *http.Response, err error) (*http.Request, error) {
 }
 
 func WithUrl(url *url.URL) RequestOption {
-	return func(r *Request) {
-		r.Url = url
+	return func(r *http.Request) {
+		(*r).URL.Host = url.Host
+		(*r).URL.Scheme = url.Scheme
+		(*r).Host = url.Host
 	}
 }
 
 func WithMethod(method string) RequestOption {
-	return func(r *Request) {
+	return func(r *http.Request) {
 		r.Method = method
 	}
 }

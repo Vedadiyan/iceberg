@@ -228,7 +228,7 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := *r.URL
-	r, err = handlers.RequestFrom(HttpProxy(r, conf.Backend))
+	r, err = handlers.RequestFrom(HttpProxy(r, r.Method, conf.Backend))
 	if err != nil {
 		w.WriteHeader(502)
 		return
@@ -278,12 +278,16 @@ func WebSocketHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Reques
 	go proxy.ResponseHandler()
 }
 
-func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
-	req, err := handlers.CloneRequest(r, handlers.WithUrl(backend))
+func HttpProxy(r *http.Request, method string, backend *url.URL) (*http.Response, error) {
+	req, err := handlers.CloneRequest(r, handlers.WithUrl(backend), handlers.WithMethod(method))
 	if err != nil {
 		return nil, err
 	}
-	return http.DefaultClient.Do(req)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 func HandlerFunc(r *http.Request, filter handlers.Filter) error {

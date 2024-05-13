@@ -4,7 +4,7 @@ spec:
   resources:
     - name: freeze
       frontend: /
-      backend: https://google.com
+      backend: http://127.0.0.1:8080
       filterChains: 
         - name: payment-intent
           listener: "nats://[[default-nats]]/internal.middleware.paymentintent"
