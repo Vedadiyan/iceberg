@@ -287,8 +287,8 @@ func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode%200 >= 100 {
-		return nil, fmt.Errorf(res.Status)
+	if res.StatusCode%200 >= 100 && strings.ToLower(res.Header.Get("x-continue-with-error")) != "true" {
+		return nil, NewHandlerError(HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
 	}
 	return res, nil
 }
