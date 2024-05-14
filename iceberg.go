@@ -219,6 +219,7 @@ func IsWebSocket(r *http.Request) bool {
 }
 
 func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
+	log.Println("handling request", r.URL.String(), r.Method)
 	err := Filter(r, conf.Filters, handlers.REQUEST)
 	if err != nil {
 		if handlerError, ok := err.(HandlerError); ok {
@@ -232,6 +233,7 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	url := *r.URL
 	r, err = handlers.RequestFrom(HttpProxy(r, conf.Backend))
 	if err != nil {
+		log.Println(err)
 		w.WriteHeader(502)
 		return
 	}
@@ -292,11 +294,11 @@ func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 	if res.StatusCode%200 >= 100 && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
 		return nil, NewHandlerError(HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
 	}
+	log.Println("proxy failed", res.StatusCode)
 	return res, nil
 }
 
 func HandlerFunc(r *http.Request, filter handlers.Filter) error {
-	log.Println("handling request", r.URL.String())
 	res, err := filter.Handle(r)
 	if err != nil {
 		return NewHandlerError(HANDLER_ERROR_INTERNAL, 0, err.Error())
