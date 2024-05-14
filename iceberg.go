@@ -296,6 +296,7 @@ func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 }
 
 func HandlerFunc(r *http.Request, filter handlers.Filter) error {
+	log.Println("handling request", r.URL.String())
 	res, err := filter.Handle(r)
 	if err != nil {
 		return NewHandlerError(HANDLER_ERROR_INTERNAL, res.StatusCode, err.Error())

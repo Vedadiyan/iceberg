@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -124,6 +125,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
 						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
 						auto.Register(auto.New[string](url.Host, false, func(value string) {
+							log.Println("nats:", value)
 							_ = di.AddSinletonWithName[nats.Conn](url.Host, func() (instance *nats.Conn, err error) {
 								return nats.Connect(value)
 							})
@@ -169,8 +171,10 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 				}
 			}
 		}
+		log.Println("config parsed")
 		conf.Filters = filters
 		handler := New(&conf)
+		log.Println(conf)
 		handler(mux)
 	}
 	return func() error {
