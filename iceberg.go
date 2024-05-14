@@ -240,6 +240,7 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	r.URL = &url
 	err = Filter(r, conf.Filters, handlers.RESPONSE)
 	if err != nil {
+		log.Println("response filter failed", err)
 		if handlerError, ok := err.(HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
 			w.Write([]byte(handlerError.Message))
