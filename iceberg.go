@@ -285,16 +285,18 @@ func WebSocketHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Reques
 func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 	req, err := handlers.CloneRequest(r, handlers.WithUrl(backend), handlers.WithMethod(r.Method))
 	if err != nil {
+		log.Println("proxy failed", err)
 		return nil, err
 	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
+		log.Println("proxy failed", err)
 		return nil, err
 	}
 	if res.StatusCode%200 >= 100 && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
+		log.Println("proxy failed", res.StatusCode)
 		return nil, NewHandlerError(HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
 	}
-	log.Println("proxy failed", res.StatusCode)
 	return res, nil
 }
 
