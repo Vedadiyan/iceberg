@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/gorilla/websocket"
@@ -342,7 +341,6 @@ func Success(statusCode int) StatusCodeClass {
 }
 
 func main() {
-	os.Setenv("default-nats", "nats://192.168.107.107:4222")
 	ver, conf, err := Parse()
 	if err != nil {
 		log.Fatalln(err.Error())
