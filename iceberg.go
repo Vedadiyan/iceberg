@@ -222,13 +222,13 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	if r.Method == "OPTIONS" {
 		w.Header().Add("access-control-allow-origin", "*")
 		w.Header().Add("access-control-allow-headers", "*")
-		w.Header().Add("Access-Control-Expose-Headers", "*")
 		w.Header().Add("access-control-max-age", "3628800")
 		w.Header().Add("access-control-allow-methods", "GET, DELETE, OPTIONS, POST, PUT")
 		w.WriteHeader(200)
 		return
 	}
 
+	w.Header().Add("Access-Control-Expose-Headers", "*")
 	log.Println("handling request", r.URL.String(), r.Method)
 	err := Filter(r, conf.Filters, handlers.REQUEST)
 	if err != nil {
