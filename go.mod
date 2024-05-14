@@ -1,6 +1,6 @@
 module github.com/vedadiyan/iceberg
 
-go 1.21.3
+go 1.20
 
 require (
 	github.com/gorilla/websocket v1.5.1
