@@ -54,20 +54,12 @@ const (
 
 func Parse() (ApiVersion, any, error) {
 
-	//DEBUG
-	config, err := os.ReadFile("sample.yml")
-	if err != nil {
-		return VER_NONE, nil, err
-	}
-	os.Setenv("ICEBERG_CONFIG", string(config))
-	//END
-
 	data := os.Getenv("ICEBERG_CONFIG")
 	if len(data) == 0 {
 		return VER_NONE, nil, fmt.Errorf("iceberg config not found")
 	}
 	version := Version{}
-	err = yaml.Unmarshal([]byte(data), &version)
+	err := yaml.Unmarshal([]byte(data), &version)
 	if err != nil {
 		return VER_NONE, nil, err
 	}
