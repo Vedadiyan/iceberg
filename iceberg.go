@@ -299,7 +299,7 @@ func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	log.Println("handling request", r.URL.String())
 	res, err := filter.Handle(r)
 	if err != nil {
-		return NewHandlerError(HANDLER_ERROR_INTERNAL, res.StatusCode, err.Error())
+		return NewHandlerError(HANDLER_ERROR_INTERNAL, 0, err.Error())
 	}
 	if res.Header.Get("status") != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
 		return NewHandlerError(HANDLER_ERROR_FILTER, res.StatusCode, res.Status)
