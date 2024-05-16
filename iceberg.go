@@ -230,9 +230,10 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Access-Control-Expose-Headers", "*")
 	log.Println("handling request", r.URL.String(), r.Method)
+	log.Println("handling request filters")
 	err := Filter(r, conf.Filters, handlers.REQUEST)
 	if err != nil {
-		log.Println("response filter failed", err)
+		log.Println("request filter failed", err)
 		if handlerError, ok := err.(HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
 			w.Write([]byte(handlerError.Message))
@@ -241,6 +242,7 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(418)
 		return
 	}
+	log.Println("handling proxy")
 	url := *r.URL
 	r, err = handlers.RequestFrom(HttpProxy(r, conf.Backend))
 	if err != nil {
@@ -249,6 +251,7 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.URL = &url
+	log.Println("handling response filters")
 	err = Filter(r, conf.Filters, handlers.RESPONSE)
 	if err != nil {
 		log.Println("response filter failed", err)
