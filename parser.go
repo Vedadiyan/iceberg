@@ -105,7 +105,7 @@ func GetCORSOptions(specV1 *SpecV1) (*handlers.CORS, error) {
 			cors := &handlers.CORS{}
 			for key, value := range value {
 				switch strings.ToLower(key) {
-				case "access-control-allow-origin":
+				case "origin":
 					{
 						value, err := GetCORSValue[string](key, value)
 						if err != nil {
@@ -113,7 +113,7 @@ func GetCORSOptions(specV1 *SpecV1) (*handlers.CORS, error) {
 						}
 						cors.Origins = *value
 					}
-				case "access-control-allow-methods":
+				case "methods":
 					{
 						value, err := GetCORSValue[string](key, value)
 						if err != nil {
@@ -121,7 +121,7 @@ func GetCORSOptions(specV1 *SpecV1) (*handlers.CORS, error) {
 						}
 						cors.Methods = *value
 					}
-				case "access-control-allow-headers":
+				case "headersAllowed":
 					{
 						value, err := GetCORSValue[string](key, value)
 						if err != nil {
@@ -129,7 +129,7 @@ func GetCORSOptions(specV1 *SpecV1) (*handlers.CORS, error) {
 						}
 						cors.Headers = *value
 					}
-				case "access-control-expose-headers":
+				case "headersExposed":
 					{
 						value, err := GetCORSValue[string](key, value)
 						if err != nil {
@@ -137,7 +137,7 @@ func GetCORSOptions(specV1 *SpecV1) (*handlers.CORS, error) {
 						}
 						cors.ExposeHeader = *value
 					}
-				case "access-control-max-age":
+				case "maxAge":
 					{
 						value, err := GetCORSValue[string](key, value)
 						if err != nil {
