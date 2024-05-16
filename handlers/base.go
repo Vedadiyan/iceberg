@@ -27,6 +27,14 @@ type (
 		Frontend *url.URL
 		Backend  *url.URL
 		Filters  []Filter
+		CORS     *CORS
+	}
+	CORS struct {
+		Origins      string
+		Headers      string
+		Methods      string
+		ExposeHeader string
+		MaxAge       string
 	}
 	Request struct {
 		Url    *url.URL

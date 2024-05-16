@@ -24,8 +24,12 @@ type (
 	SpecV1 struct {
 		Spec struct {
 			Listen    string       `yaml:"listen"`
+			Configs   ConfigsV1    `yaml:"configs"`
 			Resources []ResourceV1 `yaml:"resources"`
 		} `yaml:"spec"`
+	}
+	ConfigsV1 struct {
+		CORS any `yaml:"cors"`
 	}
 	ResourceV1 struct {
 		Name         string          `yaml:"name"`
@@ -81,10 +85,94 @@ func Parse() (ApiVersion, any, error) {
 	}
 }
 
+func GetCORSOptions(specV1 *SpecV1) (*handlers.CORS, error) {
+	switch value := specV1.Spec.Configs.CORS.(type) {
+	case string:
+		{
+			if strings.ToLower(value) != "default" {
+				return nil, fmt.Errorf("unexpected value %s", value)
+			}
+			cors := &handlers.CORS{}
+			cors.Origins = "*"
+			cors.Headers = "*"
+			cors.Methods = "GET, DELETE, OPTIONS, POST, PUT"
+			cors.ExposeHeader = "*"
+			cors.MaxAge = "3628800"
+			return cors, nil
+		}
+	case map[string]any:
+		{
+			cors := &handlers.CORS{}
+			for key, value := range value {
+				switch strings.ToLower(key) {
+				case "access-control-allow-origin":
+					{
+						value, err := GetCORSValue[string](key, value)
+						if err != nil {
+							return nil, err
+						}
+						cors.Origins = *value
+					}
+				case "access-control-allow-methods":
+					{
+						value, err := GetCORSValue[string](key, value)
+						if err != nil {
+							return nil, err
+						}
+						cors.Methods = *value
+					}
+				case "access-control-allow-headers":
+					{
+						value, err := GetCORSValue[string](key, value)
+						if err != nil {
+							return nil, err
+						}
+						cors.Headers = *value
+					}
+				case "access-control-expose-headers":
+					{
+						value, err := GetCORSValue[string](key, value)
+						if err != nil {
+							return nil, err
+						}
+						cors.ExposeHeader = *value
+					}
+				case "access-control-max-age":
+					{
+						value, err := GetCORSValue[string](key, value)
+						if err != nil {
+							return nil, err
+						}
+						cors.MaxAge = *value
+					}
+				}
+			}
+			return cors, nil
+		}
+	default:
+		{
+			return nil, nil
+		}
+	}
+}
+
+func GetCORSValue[T any](key string, value any) (*T, error) {
+	v, ok := value.(T)
+	if !ok {
+		return nil, fmt.Errorf("%s: expected string but found %T", key, value)
+	}
+	return &v, nil
+}
+
 func BuildV1(specV1 *SpecV1) (Server, error) {
 	mux := http.NewServeMux()
+	cors, err := GetCORSOptions(specV1)
+	if err != nil {
+		return nil, err
+	}
 	for _, resource := range specV1.Spec.Resources {
 		conf := handlers.Conf{}
+		conf.CORS = cors
 		backendUrl, err := url.Parse(resource.Backend)
 		if err != nil {
 			return nil, err
