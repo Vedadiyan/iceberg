@@ -7,7 +7,7 @@ spec:
       methods: ""
       headersAllowed: ""
       headersExposed: ""
-      naxAge: ""
+      maxAge: ""
   resources:
     - name: freeze
       frontend: /
