@@ -233,12 +233,13 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	log.Println("handling request filters")
 	err := Filter(r, conf.Filters, handlers.REQUEST)
 	if err != nil {
-		log.Println("request filter failed", err)
 		if handlerError, ok := err.(HandlerError); ok {
-			w.WriteHeader(handlerError.StatusCode)
+			log.Println("request filter failed", handlerError.Message)
+			w.WriteHeader(418)
 			w.Write([]byte(handlerError.Message))
 			return
 		}
+		log.Println("request filter failed", err)
 		w.WriteHeader(418)
 		return
 	}
