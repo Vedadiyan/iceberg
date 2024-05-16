@@ -232,6 +232,7 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	log.Println("handling request", r.URL.String(), r.Method)
 	err := Filter(r, conf.Filters, handlers.REQUEST)
 	if err != nil {
+		log.Println("response filter failed", err)
 		if handlerError, ok := err.(HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
 			w.Write([]byte(handlerError.Message))
@@ -319,7 +320,7 @@ func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	res, err := filter.Handle(r)
 	if err != nil {
-		return NewHandlerError(HANDLER_ERROR_INTERNAL, 0, err.Error())
+		return NewHandlerError(HANDLER_ERROR_INTERNAL, 500, err.Error())
 	}
 	if res.Header.Get("status") != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
 		return NewHandlerError(HANDLER_ERROR_FILTER, res.StatusCode, res.Status)

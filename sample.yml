@@ -1,6 +1,9 @@
 apiVersion: iceberg/v1
 spec:
   listen: ":8081"
+  configs:
+    cors: 
+      fromConfig: cors
   resources:
     - name: freeze
       frontend: /
@@ -13,3 +16,12 @@ spec:
           exchange: 
             headers: 
               - x-payment-token
+configs: 
+  cors:
+    Access-Control-Allow-Origin: ""
+    Access-Control-Allow-Methods: ""
+    Access-Control-Allow-Headers: ""
+    Access-Control-Expose-Headers: ""
+    Access-Control-Allow-Credentials: ""
+    Access-Control-Max-Age: ""
+    Access-Control-Allow-Private-Network: ""
