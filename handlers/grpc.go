@@ -18,6 +18,7 @@ type (
 		FilterBase
 		Url     string
 		Subject string
+		Headers map[string]any
 	}
 	GRPCCodec struct{}
 )

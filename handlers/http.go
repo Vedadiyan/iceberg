@@ -7,7 +7,8 @@ import (
 type (
 	HttpFilter struct {
 		FilterBase
-		Method string
+		Method  string
+		Headers map[string]any
 	}
 )
 

@@ -41,12 +41,13 @@ type (
 		FilterChains []FilterChainV1 `yaml:"filterChains"`
 	}
 	FilterChainV1 struct {
-		Name      string     `yaml:"name"`
-		Listerner string     `yaml:"listener"`
-		Level     string     `yaml:"level"`
-		Method    string     `yaml:"method"`
-		Exchange  ExchangeV1 `yaml:"exchange"`
-		Timeout   int        `yaml:"timeout"`
+		Name      string         `yaml:"name"`
+		Listerner string         `yaml:"listener"`
+		Level     string         `yaml:"level"`
+		Method    string         `yaml:"method"`
+		Exchange  ExchangeV1     `yaml:"exchange"`
+		Headers   map[string]any `yaml:"headers"`
+		Timeout   int            `yaml:"timeout"`
 	}
 	ExchangeV1 struct {
 		Headers []string `yaml:"headers"`
@@ -233,6 +234,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					natsFilter.Timeout = filter.Timeout
 					natsFilter.Url = url.Host
 					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
+					natsFilter.Headers = filter.Headers
 					filters = append(filters, &natsFilter)
 				}
 			case "natsch":
@@ -279,6 +281,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					natsFilter.Url = url.Host
 					natsFilter.Deadline = time.UnixMicro(deadlineTimestamp)
 					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
+					natsFilter.Headers = filter.Headers
 					filters = append(filters, &natsFilter)
 				}
 			case "grpc":
