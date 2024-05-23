@@ -61,7 +61,6 @@ const (
 )
 
 func Parse() (ApiVersion, any, error) {
-
 	data := os.Getenv("ICEBERG_CONFIG")
 	if len(data) == 0 {
 		return VER_NONE, nil, fmt.Errorf("iceberg config not found")
@@ -238,18 +237,21 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 				}
 			case "natsch":
 				{
-					segments := strings.Split(url.Opaque, "://")
-					if len(segments) == 1 {
-						segments = append(segments, segments[0])
-						segments[0] = "0"
-					}
-					deadlineTimestamp, err := strconv.ParseInt(segments[0], 10, 64)
-					if err != nil {
-						return nil, err
-					}
-					url, err = url.Parse(fmt.Sprintf("natsch://%s", segments[1]))
-					if err != nil {
-						return nil, err
+					var deadlineTimestamp int64
+					if len(url.Opaque) > 0 {
+						segments := strings.Split(url.Opaque, "://")
+						if len(segments) != 2 {
+							return nil, fmt.Errorf("invalid natsch scheme")
+						}
+						value, err := strconv.ParseInt(segments[0], 10, 64)
+						if err != nil {
+							return nil, err
+						}
+						deadlineTimestamp = value
+						url, err = url.Parse(fmt.Sprintf("natsch://%s", segments[1]))
+						if err != nil {
+							return nil, err
+						}
 					}
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
 						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
