@@ -6,12 +6,15 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
 	"github.com/vedadiyan/goal/pkg/di"
 	"github.com/vedadiyan/iceberg/handlers"
+	"github.com/vedadiyan/natsch"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
 )
@@ -230,6 +233,49 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					natsFilter.Level = level
 					natsFilter.Timeout = filter.Timeout
 					natsFilter.Url = url.Host
+					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
+					filters = append(filters, &natsFilter)
+				}
+			case "natsch":
+				{
+					segments := strings.Split(url.Opaque, "://")
+					if len(segments) == 1 {
+						segments = append(segments, segments[0])
+						segments[0] = "0"
+					}
+					deadlineTimestamp, err := strconv.ParseInt(segments[0], 10, 64)
+					if err != nil {
+						return nil, err
+					}
+					url, err = url.Parse(fmt.Sprintf("natsch://%s", segments[1]))
+					if err != nil {
+						return nil, err
+					}
+					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
+						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
+						auto.Register(auto.New[string](url.Host, false, func(value string) {
+							log.Println("natsch:", value)
+							_ = di.AddSinletonWithName[natsch.Conn](url.Host, func() (instance *natsch.Conn, err error) {
+								conn, err := nats.Connect(value)
+								if err != nil {
+									return nil, err
+								}
+								return natsch.New(conn)
+							})
+						}))
+					} else {
+						_ = di.AddSinletonWithName[nats.Conn](url.Host, func() (instance *nats.Conn, err error) {
+							return nats.Connect(url.Host)
+						})
+					}
+					natsFilter := handlers.NATSCHFilter{}
+					natsFilter.Address = url
+					natsFilter.ExchangeHeaders = filter.Exchange.Headers
+					natsFilter.ExchangeBody = filter.Exchange.Body
+					natsFilter.Level = level
+					natsFilter.Timeout = filter.Timeout
+					natsFilter.Url = url.Host
+					natsFilter.Deadline = time.UnixMicro(deadlineTimestamp)
 					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
 					filters = append(filters, &natsFilter)
 				}
