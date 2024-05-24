@@ -8,7 +8,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/nats-io/nats.go"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
@@ -240,17 +239,17 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 				}
 			case "natsch":
 				{
-					var deadlineTimestamp int64
+					var delay int
 					if len(url.Opaque) > 0 {
 						segments := strings.Split(url.Opaque, "://")
 						if len(segments) != 2 {
 							return nil, fmt.Errorf("invalid natsch scheme")
 						}
-						value, err := strconv.ParseInt(segments[0], 10, 64)
+						value, err := strconv.ParseInt(segments[0], 10, 32)
 						if err != nil {
 							return nil, err
 						}
-						deadlineTimestamp = value
+						delay = int(value)
 						url, err = url.Parse(fmt.Sprintf("natsch://%s", segments[1]))
 						if err != nil {
 							return nil, err
@@ -280,7 +279,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					natsFilter.Level = level
 					natsFilter.Timeout = filter.Timeout
 					natsFilter.Url = url.Host
-					natsFilter.Deadline = time.UnixMicro(deadlineTimestamp)
+					natsFilter.Deadline = delay
 					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
 					natsFilter.Callbacks = filter.Callbacks
 					filters = append(filters, &natsFilter)
