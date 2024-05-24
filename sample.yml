@@ -16,10 +16,34 @@ spec:
         - name: payment-intent
           listener: "natsch:10000://[[default-nats]]/internal.middleware.paymentintent"
           level: "response"
-          headers: 
-            callbacks: 
+          callbacks: 
+            OK: 
               - internal.middleware.paymentintent
               - internal.middleware.paymentintent
+            NOT_FOUND:
+              - internal.middleware.paymentintent
+              - internal.middleware.paymentintent
+            CARD_UNAUTHORIZED:
+              - internal.middleware.paymentintent
+              - internal.middleware.paymentintent            
+            SOLD_OUT:
+              - internal.middleware.paymentintent
+              - internal.middleware.paymentintent            
+            BOOK_LIMIT:
+              - internal.middleware.paymentintent
+              - internal.middleware.paymentintent            
+            REMOTE_PROVIDER:
+              - internal.middleware.paymentintent
+              - internal.middleware.paymentintent            
+            SPEEDY_BOOKING:
+              - internal.middleware.paymentintent
+              - internal.middleware.paymentintent            
+            REMOTE_FAILURE:
+              - internal.middleware.paymentintent
+              - internal.middleware.paymentintent            
+            INVALID_RESPONSE:
+              - internal.middleware.paymentintent
+              - internal.middleware.paymentintent            
           timeout: 30
           exchange: 
             headers: 

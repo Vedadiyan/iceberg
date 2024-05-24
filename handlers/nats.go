@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -13,9 +14,9 @@ import (
 type (
 	NATSFilter struct {
 		FilterBase
-		Url     string
-		Subject string
-		Headers map[string]string
+		Url       string
+		Subject   string
+		Callbacks map[string][]string
 	}
 )
 
@@ -43,8 +44,12 @@ func (filter *NATSFilter) Handle(r *http.Request) (*http.Response, error) {
 	}
 	msg.Header.Add("path", req.URL.Path)
 	msg.Header.Add("query", req.URL.RawQuery)
-	for key, value := range filter.Headers {
-		msg.Header.Add(key, value)
+	for key, values := range filter.Callbacks {
+		msg.Header.Add("x-callbacks", key)
+		key := fmt.Sprintf("x-callback-%s", key)
+		for _, value := range values {
+			msg.Header.Add(key, value)
+		}
 	}
 	res, err := conn.RequestMsg(&msg, time.Second*time.Duration(filter.Timeout))
 	if err != nil {
