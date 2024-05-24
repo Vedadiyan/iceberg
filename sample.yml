@@ -18,32 +18,23 @@ spec:
           level: "response"
           callbacks: 
             OK: 
-              - internal.middleware.paymentintent
-              - internal.middleware.paymentintent
+              - internal.middleware.email.ok
             NOT_FOUND:
-              - internal.middleware.paymentintent
-              - internal.middleware.paymentintent
+              - internal.middleware.email.not_found
             CARD_UNAUTHORIZED:
-              - internal.middleware.paymentintent
-              - internal.middleware.paymentintent            
+              - internal.middleware.email.card_unauthorized
             SOLD_OUT:
-              - internal.middleware.paymentintent
-              - internal.middleware.paymentintent            
+              - internal.middleware.email.sold_out
             BOOK_LIMIT:
-              - internal.middleware.paymentintent
-              - internal.middleware.paymentintent            
+              - internal.middleware.email.book_limit
             REMOTE_PROVIDER:
-              - internal.middleware.paymentintent
-              - internal.middleware.paymentintent            
+              - internal.middleware.email.remote_provider
             SPEEDY_BOOKING:
-              - internal.middleware.paymentintent
-              - internal.middleware.paymentintent            
+              - internal.middleware.email.speedy_booking
             REMOTE_FAILURE:
-              - internal.middleware.paymentintent
-              - internal.middleware.paymentintent            
+              - internal.middleware.email.remote_failure
             INVALID_RESPONSE:
-              - internal.middleware.paymentintent
-              - internal.middleware.paymentintent            
+              - internal.middleware.email.invalid_response
           timeout: 30
           exchange: 
             headers: 

@@ -6,6 +6,7 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/nats-io/nats.go v1.34.1
 	github.com/vedadiyan/goal v0.2.11
+	github.com/vedadiyan/natsch v0.0.2
 	google.golang.org/grpc v1.61.1
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -19,7 +20,6 @@ require (
 	github.com/klauspost/compress v1.17.2 // indirect
 	github.com/nats-io/nkeys v0.4.7 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
-	github.com/vedadiyan/natsch v0.0.1 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.9 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.5.9 // indirect
 	go.etcd.io/etcd/client/v3 v3.5.9 // indirect

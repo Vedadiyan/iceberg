@@ -21,8 +21,6 @@ github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
 github.com/klauspost/compress v1.17.2 h1:RlWWUY/Dr4fL8qk9YG7DTZ7PDgME2V4csBXA8L/ixi4=
 github.com/klauspost/compress v1.17.2/go.mod h1:ntbaceVETuRiXiv4DpjP66DpAtAGkEQskQzEyD//IeE=
-github.com/nats-io/nats.go v1.33.1 h1:8TxLZZ/seeEfR97qV0/Bl939tpDnt2Z2fK3HkPypj70=
-github.com/nats-io/nats.go v1.33.1/go.mod h1:Ubdu4Nh9exXdSz0RVWRFBbRfrbSxOYd26oF0wkWclB8=
 github.com/nats-io/nats.go v1.34.1 h1:syWey5xaNHZgicYBemv0nohUPPmaLteiBEUT6Q5+F/4=
 github.com/nats-io/nats.go v1.34.1/go.mod h1:Ubdu4Nh9exXdSz0RVWRFBbRfrbSxOYd26oF0wkWclB8=
 github.com/nats-io/nkeys v0.4.7 h1:RwNJbbIdYCoClSDNY7QVKZlyb/wfT6ugvFCiKy6vDvI=
@@ -39,8 +37,8 @@ github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.8.1 h1:w7B6lhMri9wdJUVmEZPGGhZzrYTPvgJArz7wNPgYKsk=
 github.com/vedadiyan/goal v0.2.11 h1:fbMpY+ecq9alC3FdiaQZnUbOqOyqwPn7ypyzdsbMYTY=
 github.com/vedadiyan/goal v0.2.11/go.mod h1:uiuX9tuP9DCSES+CJSjFCazK6nv6bGsEl5sqm+rVJ5E=
-github.com/vedadiyan/natsch v0.0.1 h1:ALlcIDayeGFQyBBhXg7KA8s2aPP3c+fOPKykS9NxzLQ=
-github.com/vedadiyan/natsch v0.0.1/go.mod h1:IP4FauQKmcrNWeVBPiYzOMxj+me+RkJnlSR+kK0TKL0=
+github.com/vedadiyan/natsch v0.0.2 h1:D7vuswugTu3JrenlgbwqcOfdEo1MySo68HbEWIHMe04=
+github.com/vedadiyan/natsch v0.0.2/go.mod h1:IP4FauQKmcrNWeVBPiYzOMxj+me+RkJnlSR+kK0TKL0=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.etcd.io/etcd/api/v3 v3.5.9 h1:4wSsluwyTbGGmyjJktOf3wFQoTBIURXHnq9n/G/JQHs=
