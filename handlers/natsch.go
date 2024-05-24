@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -17,7 +16,7 @@ type (
 		Url      string
 		Subject  string
 		Deadline time.Time
-		Headers  map[string]any
+		Headers  map[string]string
 	}
 )
 
@@ -46,25 +45,7 @@ func (filter *NATSCHFilter) Handle(r *http.Request) (*http.Response, error) {
 	msg.Header.Add("path", req.URL.Path)
 	msg.Header.Add("query", req.URL.RawQuery)
 	for key, value := range filter.Headers {
-		switch value := value.(type) {
-		case string, int64, float64, bool:
-			{
-				msg.Header.Add(key, fmt.Sprintf("%v", value))
-			}
-		case []any:
-			{
-				var buffer bytes.Buffer
-				for _, value := range value {
-					buffer.WriteString(fmt.Sprintf("%v", value))
-					buffer.WriteString(",")
-				}
-				msg.Header.Add(key, string(buffer.Bytes()[:buffer.Len()-1]))
-			}
-		default:
-			{
-				return nil, fmt.Errorf("invalid header type %T", value)
-			}
-		}
+		msg.Header.Add(key, value)
 	}
 	res, err := conn.RequestMsg(&msg, time.Second*time.Duration(filter.Timeout))
 	if err != nil {

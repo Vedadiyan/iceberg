@@ -16,6 +16,10 @@ spec:
         - name: payment-intent
           listener: "natsch:10000://[[default-nats]]/internal.middleware.paymentintent"
           level: "response"
+          headers: 
+            callbacks: 
+              - internal.middleware.paymentintent
+              - internal.middleware.paymentintent
           timeout: 30
           exchange: 
             headers: 

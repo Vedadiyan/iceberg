@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net/http"
@@ -213,6 +214,10 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 				}
 			case "nats":
 				{
+					headers, err := HeaderFltanner(filter.Headers)
+					if err != nil {
+						return nil, err
+					}
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
 						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
 						auto.Register(auto.New[string](url.Host, false, func(value string) {
@@ -234,11 +239,15 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					natsFilter.Timeout = filter.Timeout
 					natsFilter.Url = url.Host
 					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
-					natsFilter.Headers = filter.Headers
+					natsFilter.Headers = headers
 					filters = append(filters, &natsFilter)
 				}
 			case "natsch":
 				{
+					headers, err := HeaderFltanner(filter.Headers)
+					if err != nil {
+						return nil, err
+					}
 					var deadlineTimestamp int64
 					if len(url.Opaque) > 0 {
 						segments := strings.Split(url.Opaque, "://")
@@ -281,7 +290,8 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					natsFilter.Url = url.Host
 					natsFilter.Deadline = time.UnixMicro(deadlineTimestamp)
 					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
-					natsFilter.Headers = filter.Headers
+
+					natsFilter.Headers = headers
 					filters = append(filters, &natsFilter)
 				}
 			case "grpc":
@@ -341,4 +351,30 @@ func Levels(level string) handlers.Level {
 		}
 	}
 	return output
+}
+
+func HeaderFltanner(headers map[string]any) (map[string]string, error) {
+	mapper := make(map[string]string)
+	for key, value := range headers {
+		switch value := value.(type) {
+		case string, int64, float64, bool:
+			{
+				mapper[key] = fmt.Sprintf("%v", value)
+			}
+		case []any:
+			{
+				var buffer bytes.Buffer
+				for _, value := range value {
+					buffer.WriteString(fmt.Sprintf("%v", value))
+					buffer.WriteString(",")
+				}
+				mapper[key] = buffer.String()[:buffer.Len()-1]
+			}
+		default:
+			{
+				return nil, fmt.Errorf("invalid header type %T", value)
+			}
+		}
+	}
+	return mapper, nil
 }

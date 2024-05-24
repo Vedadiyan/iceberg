@@ -15,7 +15,7 @@ type (
 		FilterBase
 		Url     string
 		Subject string
-		Headers map[string]any
+		Headers map[string]string
 	}
 )
 
@@ -43,6 +43,9 @@ func (filter *NATSFilter) Handle(r *http.Request) (*http.Response, error) {
 	}
 	msg.Header.Add("path", req.URL.Path)
 	msg.Header.Add("query", req.URL.RawQuery)
+	for key, value := range filter.Headers {
+		msg.Header.Add(key, value)
+	}
 	res, err := conn.RequestMsg(&msg, time.Second*time.Duration(filter.Timeout))
 	if err != nil {
 		return nil, err
