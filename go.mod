@@ -6,7 +6,7 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/nats-io/nats.go v1.34.1
 	github.com/vedadiyan/goal v0.2.11
-	github.com/vedadiyan/natsch v0.0.2
+	github.com/vedadiyan/natsch v0.0.4
 	google.golang.org/grpc v1.61.1
 	gopkg.in/yaml.v3 v3.0.1
 )
