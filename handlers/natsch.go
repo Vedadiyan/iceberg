@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -22,8 +23,10 @@ type (
 )
 
 func (filter *NATSCHFilter) Handle(r *http.Request) (*http.Response, error) {
+	log.Println("handling natsch")
 	req, err := CloneRequest(r)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	data, err := io.ReadAll(req.Body)
@@ -32,6 +35,7 @@ func (filter *NATSCHFilter) Handle(r *http.Request) (*http.Response, error) {
 	}
 	conn, err := di.ResolveWithName[natsch.Conn](filter.Url, nil)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	msg := natsch.NewMsg()
@@ -55,8 +59,8 @@ func (filter *NATSCHFilter) Handle(r *http.Request) (*http.Response, error) {
 	msg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
 	err = conn.PublishMsgSch(msg)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
-
 	return nil, nil
 }
