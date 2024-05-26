@@ -34,7 +34,7 @@ func (filter *NATSCHFilter) Handle(r *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	msg := natsch.Msg{}
+	msg := natsch.NewMsg()
 	msg.Subject = filter.Subject
 	msg.Data = data
 	msg.Header = nats.Header{}
@@ -53,7 +53,7 @@ func (filter *NATSCHFilter) Handle(r *http.Request) (*http.Response, error) {
 		}
 	}
 	msg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
-	err = conn.PublishMsgSch(&msg)
+	err = conn.PublishMsgSch(msg)
 	if err != nil {
 		return nil, err
 	}

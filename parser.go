@@ -198,7 +198,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 				{
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
 						host := strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
-						auto.Register(auto.New[string](host, false, func(value string) {
+						auto.Register(auto.New(host, false, func(value string) {
 							url.Host = value
 						}))
 					}
@@ -215,14 +215,14 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 				{
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
 						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
-						auto.Register(auto.New[string](url.Host, false, func(value string) {
+						auto.Register(auto.New(url.Host, false, func(value string) {
 							log.Println("nats:", value)
-							_ = di.AddSinletonWithName[nats.Conn](url.Host, func() (instance *nats.Conn, err error) {
+							_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
 								return nats.Connect(value)
 							})
 						}))
 					} else {
-						_ = di.AddSinletonWithName[nats.Conn](url.Host, func() (instance *nats.Conn, err error) {
+						_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
 							return nats.Connect(url.Host)
 						})
 					}
@@ -257,9 +257,9 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					}
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
 						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
-						auto.Register(auto.New[string](url.Host, false, func(value string) {
+						auto.Register(auto.New(url.Host, false, func(value string) {
 							log.Println("natsch:", value)
-							_ = di.AddSinletonWithName[natsch.Conn](url.Host, func() (instance *natsch.Conn, err error) {
+							_ = di.AddSinletonWithName(url.Host, func() (instance *natsch.Conn, err error) {
 								conn, err := nats.Connect(value)
 								if err != nil {
 									return nil, err
@@ -268,7 +268,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 							})
 						}))
 					} else {
-						_ = di.AddSinletonWithName[nats.Conn](url.Host, func() (instance *nats.Conn, err error) {
+						_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
 							return nats.Connect(url.Host)
 						})
 					}
@@ -288,13 +288,13 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 				{
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
 						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
-						auto.Register(auto.New[string](url.Host, false, func(value string) {
-							_ = di.AddSinletonWithName[grpc.ClientConn](url.Host, func() (instance *grpc.ClientConn, err error) {
+						auto.Register(auto.New(url.Host, false, func(value string) {
+							_ = di.AddSinletonWithName(url.Host, func() (instance *grpc.ClientConn, err error) {
 								return grpc.Dial(value)
 							})
 						}))
 					} else {
-						_ = di.AddSinletonWithName[grpc.ClientConn](url.Host, func() (instance *grpc.ClientConn, err error) {
+						_ = di.AddSinletonWithName(url.Host, func() (instance *grpc.ClientConn, err error) {
 							return grpc.Dial(url.Host)
 						})
 					}
