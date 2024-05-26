@@ -331,6 +331,9 @@ func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	if err != nil {
 		return NewHandlerError(HANDLER_ERROR_INTERNAL, 500, err.Error())
 	}
+	if res == nil {
+		return nil
+	}
 	if res.Header.Get("status") != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
 		return NewHandlerError(HANDLER_ERROR_FILTER, res.StatusCode, res.Status)
 	}
