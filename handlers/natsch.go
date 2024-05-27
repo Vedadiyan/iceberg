@@ -1,39 +1,44 @@
 package handlers
 
 import (
-	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/vedadiyan/goal/pkg/di"
+	"github.com/vedadiyan/natsch"
 )
 
 type (
-	NATSFilter struct {
+	NATSCHFilter struct {
 		FilterBase
 		Url       string
 		Subject   string
+		Deadline  int
 		Callbacks map[string][]string
 	}
 )
 
-func (filter *NATSFilter) Handle(r *http.Request) (*http.Response, error) {
+func (filter *NATSCHFilter) Handle(r *http.Request) (*http.Response, error) {
+	log.Println("handling natsch")
 	req, err := CloneRequest(r)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
 		return nil, err
 	}
-	conn, err := di.ResolveWithName[nats.Conn](filter.Url, nil)
+	conn, err := di.ResolveWithName[natsch.Conn](filter.Url, nil)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
-	msg := nats.Msg{}
+	msg := natsch.NewMsg()
 	msg.Subject = filter.Subject
 	msg.Data = data
 	msg.Header = nats.Header{}
@@ -51,17 +56,11 @@ func (filter *NATSFilter) Handle(r *http.Request) (*http.Response, error) {
 			msg.Header.Add(key, value)
 		}
 	}
-	res, err := conn.RequestMsg(&msg, time.Second*time.Duration(filter.Timeout))
+	msg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
+	err = conn.PublishMsgSch(msg)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
-	response := http.Response{}
-	response.Header = http.Header{}
-	response.Body = io.NopCloser(bytes.NewBuffer(res.Data))
-	for key, values := range res.Header {
-		for _, value := range values {
-			response.Header.Add(key, value)
-		}
-	}
-	return &response, nil
+	return nil, nil
 }

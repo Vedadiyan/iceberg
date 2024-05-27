@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"time"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
@@ -15,6 +15,7 @@ import (
 )
 
 type (
+	KnownHeader       string
 	StatusCodeClass   int
 	Handler           func(*http.ServeMux)
 	HandlerErrorClass int
@@ -22,6 +23,14 @@ type (
 		Class      HandlerErrorClass
 		StatusCode int
 		Message    string
+	}
+	WebSocketProxy struct {
+		Conf            *handlers.Conf
+		Conn            *websocket.Conn
+		ProxiedConn     *websocket.Conn
+		Request         *http.Request
+		interceptListen bool
+		proxyListen     bool
 	}
 )
 
@@ -34,6 +43,8 @@ const (
 	HANDLER_ERROR_INTERNAL HandlerErrorClass = 0
 	HANDLER_ERROR_FILTER   HandlerErrorClass = 1
 	HANDLER_ERROR_PROXY    HandlerErrorClass = 2
+
+	HEADER_CONTINUE_ON_ERROR KnownHeader = "x-continue-on-error"
 )
 
 var (
@@ -47,12 +58,143 @@ func (handlerError HandlerError) Error() string {
 	return fmt.Sprintf("%d: %s", handlerError.Class, handlerError.Message)
 }
 
+func (wsp *WebSocketProxy) RequestHandler() {
+	defer func() {
+		wsp.Conn.Close()
+		wsp.proxyListen = false
+	}()
+	for wsp.interceptListen {
+		messageType, data, err := wsp.Conn.NextReader()
+		if err != nil {
+			return
+		}
+		message, err := io.ReadAll(data)
+		if err != nil {
+			wsp.Conn.WriteJSON(HandlerError{
+				Class:      HANDLER_ERROR_INTERNAL,
+				StatusCode: 500,
+				Message:    err.Error(),
+			})
+			continue
+		}
+		req, err := handlers.CloneRequest(wsp.Request)
+		if err != nil {
+			wsp.Conn.WriteJSON(HandlerError{
+				Class:      HANDLER_ERROR_INTERNAL,
+				StatusCode: 500,
+				Message:    err.Error(),
+			})
+			return
+		}
+		req.Body = io.NopCloser(bytes.NewBuffer(message))
+		err = Filter(req, wsp.Conf.Filters, handlers.REQUEST)
+		if err != nil {
+			if handlerError, ok := err.(HandlerError); ok {
+				wsp.Conn.WriteJSON(handlerError)
+				return
+			}
+			wsp.Conn.WriteJSON(HandlerError{
+				StatusCode: 418,
+			})
+			return
+		}
+		err = wsp.ProxiedConn.WriteMessage(messageType, message)
+		if err != nil {
+			wsp.Conn.WriteJSON(HandlerError{
+				Class:      HANDLER_ERROR_PROXY,
+				StatusCode: 500,
+				Message:    err.Error(),
+			})
+			continue
+		}
+	}
+}
+
+func (wsp *WebSocketProxy) ResponseHandler() {
+	defer func() {
+		wsp.ProxiedConn.Close()
+		wsp.interceptListen = false
+	}()
+	for wsp.proxyListen {
+		messageType, data, err := wsp.ProxiedConn.NextReader()
+		if err != nil {
+			return
+		}
+		message, err := io.ReadAll(data)
+		if err != nil {
+			wsp.Conn.WriteJSON(HandlerError{
+				Class:      HANDLER_ERROR_INTERNAL,
+				StatusCode: 500,
+				Message:    err.Error(),
+			})
+			continue
+		}
+		req, err := http.NewRequest("", "", bytes.NewBuffer(message))
+		if err != nil {
+			wsp.Conn.WriteJSON(HandlerError{
+				Class:      HANDLER_ERROR_INTERNAL,
+				StatusCode: 500,
+				Message:    err.Error(),
+			})
+			continue
+		}
+		err = Filter(req, wsp.Conf.Filters, handlers.RESPONSE)
+		if err != nil {
+			if handlerError, ok := err.(HandlerError); ok {
+				wsp.Conn.WriteJSON(handlerError)
+				continue
+			}
+			wsp.Conn.WriteJSON(HandlerError{
+				StatusCode: 418,
+			})
+			continue
+		}
+		message, err = io.ReadAll(req.Body)
+		if err != nil {
+			wsp.Conn.WriteJSON(HandlerError{
+				Class:      HANDLER_ERROR_INTERNAL,
+				StatusCode: 500,
+				Message:    err.Error(),
+			})
+			continue
+		}
+		err = wsp.Conn.WriteMessage(messageType, message)
+		if err != nil {
+			wsp.Conn.WriteJSON(HandlerError{
+				Class:      HANDLER_ERROR_INTERNAL,
+				StatusCode: 500,
+				Message:    err.Error(),
+			})
+			continue
+		}
+	}
+}
+
 func NewHandlerError(class HandlerErrorClass, statusCode int, message string) error {
 	handlerError := HandlerError{
 		Class:   class,
 		Message: message,
 	}
 	return handlerError
+}
+
+func NewWebSocketProxy(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) (*WebSocketProxy, error) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return nil, err
+	}
+	proxiedConn, _, err := websocket.DefaultDialer.Dial(conf.Backend.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	webSocketProxy := WebSocketProxy{
+		Conn:            conn,
+		Conf:            conf,
+		ProxiedConn:     proxiedConn,
+		interceptListen: true,
+		proxyListen:     true,
+	}
+	return &webSocketProxy, nil
 }
 
 func New(conf *handlers.Conf) Handler {
@@ -76,9 +218,28 @@ func IsWebSocket(r *http.Request) bool {
 	return false
 }
 
+func HandleCORS(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
+	if conf.CORS != nil {
+		if r.Method == "OPTIONS" {
+			w.Header().Add("access-control-allow-origin", conf.CORS.Origins)
+			w.Header().Add("access-control-allow-headers", conf.CORS.Headers)
+			w.Header().Add("access-control-max-age", conf.CORS.MaxAge)
+			w.Header().Add("access-control-allow-methods", conf.CORS.Methods)
+			w.WriteHeader(200)
+			return
+		}
+		w.Header().Add("Access-Control-Expose-Headers", conf.CORS.ExposeHeader)
+	}
+}
+
 func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
-	err := FilterRequest(r, conf.Filters)
+	HandleCORS(conf, w, r)
+
+	log.Println("handling request", r.URL.String(), r.Method)
+	log.Println("handling request filters")
+	err := Filter(r, conf.Filters, handlers.REQUEST)
 	if err != nil {
+		log.Println("request filter failed", err)
 		if handlerError, ok := err.(HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
 			w.Write([]byte(handlerError.Message))
@@ -87,12 +248,25 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(418)
 		return
 	}
+	log.Println("handling proxy")
+	url := *r.URL
 	r, err = handlers.RequestFrom(HttpProxy(r, conf.Backend))
 	if err != nil {
+		log.Println(err)
+		w.WriteHeader(502)
 		return
 	}
-	err = FilterResponse(r, conf.Filters)
+	r.URL = &url
+	log.Println("handling response filters")
+	err = Filter(r, conf.Filters, handlers.RESPONSE)
 	if err != nil {
+		log.Println("response filter failed", err)
+		if handlerError, ok := err.(HandlerError); ok {
+			w.WriteHeader(handlerError.StatusCode)
+			w.Write([]byte(handlerError.Message))
+			return
+		}
+		w.WriteHeader(418)
 		return
 	}
 	for key, values := range r.Header {
@@ -102,124 +276,65 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		w.WriteHeader(500)
 		return
 	}
 	w.Write(body)
 }
 
 func WebSocketHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+	err := Filter(r, conf.Filters, handlers.CONNECT)
 	if err != nil {
+		if handlerError, ok := err.(HandlerError); ok {
+			w.WriteHeader(handlerError.StatusCode)
+			w.Write([]byte(handlerError.Message))
+			return
+		}
+		w.WriteHeader(418)
 		return
 	}
-	proxiedConn, _, err := websocket.DefaultDialer.Dial(conf.Backend.String(), nil)
+
+	proxy, err := NewWebSocketProxy(conf, w, r)
 	if err != nil {
+		w.WriteHeader(500)
 		return
 	}
-	interceptListen := true
-	proxyListen := true
-	go func() {
-		defer func() {
-			conn.Close()
-			proxyListen = false
-		}()
-		for interceptListen {
-			messageType, data, err := conn.NextReader()
-			if err != nil {
-				return
-			}
-			message, err := io.ReadAll(data)
-			if err != nil {
-				conn.WriteJSON(HandlerError{
-					Class:      HANDLER_ERROR_INTERNAL,
-					StatusCode: 500,
-					Message:    err.Error(),
-				})
-				continue
-			}
-			req, err := handlers.CloneRequest(r)
-			if err != nil {
-				conn.WriteJSON(HandlerError{
-					Class:      HANDLER_ERROR_INTERNAL,
-					StatusCode: 500,
-					Message:    err.Error(),
-				})
-				return
-			}
-			req.Body = io.NopCloser(bytes.NewBuffer(message))
-			err = FilterRequest(req, conf.Filters)
-			if err != nil {
-				if handlerError, ok := err.(HandlerError); ok {
-					conn.WriteJSON(handlerError)
-					return
-				}
-				conn.WriteJSON(HandlerError{
-					StatusCode: 418,
-				})
-				return
-			}
-			proxiedConn.SetWriteDeadline(time.Now().Add(time.Second * 2))
-			err = proxiedConn.WriteMessage(messageType, message)
-			if err != nil {
-				conn.WriteJSON(HandlerError{
-					Class:      HANDLER_ERROR_PROXY,
-					StatusCode: 500,
-					Message:    err.Error(),
-				})
-				continue
-			}
-		}
-	}()
-	go func() {
-		defer func() {
-			proxiedConn.Close()
-			interceptListen = false
-		}()
-		for proxyListen {
-			messageType, data, err := proxiedConn.NextReader()
-			if err != nil {
-				return
-			}
-			message, err := io.ReadAll(data)
-			if err != nil {
-				continue
-			}
-			req, err := http.NewRequest("", "", bytes.NewBuffer(message))
-			if err != nil {
-				continue
-			}
-			err = FilterResponse(req, conf.Filters)
-			if err != nil {
-				continue
-			}
-			conn.SetWriteDeadline(time.Now().Add(time.Second * 2))
-			message, err = io.ReadAll(req.Body)
-			if err != nil {
-				continue
-			}
-			err = conn.WriteMessage(messageType, message)
-			if err != nil {
-				continue
-			}
-		}
-	}()
+	go proxy.RequestHandler()
+	go proxy.ResponseHandler()
 }
 
 func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
-	req, err := handlers.CloneRequest(r, handlers.WithUrl(backend))
+	req, err := handlers.CloneRequest(r, handlers.WithUrl(backend), handlers.WithMethod(r.Method))
 	if err != nil {
+		log.Println("proxy failed", err)
 		return nil, err
 	}
-	return http.DefaultClient.Do(req)
-
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Println("proxy failed", err)
+		return nil, err
+	}
+	if res.StatusCode%200 >= 100 && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
+		r, err := io.ReadAll(res.Body)
+		if err != nil {
+			log.Println("proxy failed", res.StatusCode, "unknown")
+			return nil, NewHandlerError(HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
+		}
+		log.Println("proxy failed", res.StatusCode, string(r))
+		return nil, NewHandlerError(HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
+	}
+	return res, nil
 }
 
 func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	res, err := filter.Handle(r)
 	if err != nil {
-		return NewHandlerError(HANDLER_ERROR_INTERNAL, res.StatusCode, err.Error())
+		return NewHandlerError(HANDLER_ERROR_INTERNAL, 500, err.Error())
 	}
-	if StatusCodeClass(res.StatusCode) != STATUS_SUCCESS {
+	if res == nil {
+		return nil
+	}
+	if res.Header.Get("status") != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
 		return NewHandlerError(HANDLER_ERROR_FILTER, res.StatusCode, res.Status)
 	}
 	err = filter.MoveTo(res, r)
@@ -229,26 +344,9 @@ func HandlerFunc(r *http.Request, filter handlers.Filter) error {
 	return nil
 }
 
-func FilterRequest(r *http.Request, filters []handlers.Filter) error {
+func Filter(r *http.Request, filters []handlers.Filter, level handlers.Level) error {
 	for _, filter := range filters {
-		if !filter.Is(handlers.INTERCEPT) {
-			continue
-		}
-		if !filter.Is(handlers.PARALLEL) {
-			err := HandlerFunc(r, filter)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-		go HandlerFunc(r, filter)
-	}
-	return nil
-}
-
-func FilterResponse(r *http.Request, filters []handlers.Filter) error {
-	for _, filter := range filters {
-		if !filter.Is(handlers.POST_PROCESS) {
+		if !filter.Is(level) {
 			continue
 		}
 		if !filter.Is(handlers.PARALLEL) {
@@ -281,7 +379,6 @@ func main() {
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
-	auto.ForConfigMap().Bootstrap()
 	var server Server
 	switch ver {
 	case VER_V1:
@@ -300,6 +397,7 @@ func main() {
 			log.Fatalln("unsupported api version")
 		}
 	}
+	auto.ForConfigMap().Bootstrap()
 	err = server()
 	if err != nil {
 		log.Fatalln(err.Error())
