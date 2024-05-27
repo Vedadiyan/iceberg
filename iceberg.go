@@ -218,7 +218,7 @@ func IsWebSocket(r *http.Request) bool {
 	return false
 }
 
-func HandleCORS(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
+func HandleCORS(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) bool {
 	if conf.CORS != nil {
 		if r.Method == "OPTIONS" {
 			w.Header().Add("access-control-allow-origin", conf.CORS.Origins)
@@ -226,14 +226,17 @@ func HandleCORS(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 			w.Header().Add("access-control-max-age", conf.CORS.MaxAge)
 			w.Header().Add("access-control-allow-methods", conf.CORS.Methods)
 			w.WriteHeader(200)
-			return
+			return true
 		}
 		w.Header().Add("Access-Control-Expose-Headers", conf.CORS.ExposeHeader)
 	}
+	return false
 }
 
 func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
-	HandleCORS(conf, w, r)
+	if HandleCORS(conf, w, r) {
+		return
+	}
 
 	log.Println("handling request", r.URL.String(), r.Method)
 	log.Println("handling request filters")
