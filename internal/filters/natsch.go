@@ -49,6 +49,7 @@ func (filter *NATSCHFilter) HandleSync(r *http.Request) (*http.Response, error) 
 		logger.Error(err, "")
 		return nil, err
 	}
+	Await(conn.Conn, filter.AwaitList)
 	msg, err := GetMsg(r, filter.Subject)
 	if err != nil {
 		logger.Error(err, "")
@@ -87,6 +88,7 @@ func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
 		logger.Error(err, "")
 		return
 	}
+	Await(conn.Conn, filter.AwaitList)
 	stateManager, err := GetStateManager(conn.Conn)
 	if err != nil {
 		logger.Error(err, "")

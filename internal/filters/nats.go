@@ -19,14 +19,16 @@ type (
 )
 
 func (filter *NATSFilter) HandleSync(r *http.Request) (*http.Response, error) {
-	msg, err := GetMsg(r, filter.Subject)
-	if err != nil {
-		return nil, err
-	}
 	conn, err := di.ResolveWithName[nats.Conn](filter.Url, nil)
 	if err != nil {
 		return nil, err
 	}
+	Await(conn, filter.AwaitList)
+	msg, err := GetMsg(r, filter.Subject)
+	if err != nil {
+		return nil, err
+	}
+
 	res, err := conn.RequestMsg(msg, time.Second*time.Duration(filter.Timeout))
 	if err != nil {
 		return nil, err
@@ -50,6 +52,7 @@ func (filter *NATSFilter) HandleAsync(r *http.Request) {
 		logger.Error(err, "")
 		return
 	}
+	Await(conn, filter.AwaitList)
 	msg, err := GetMsg(r, filter.Subject)
 	if err != nil {
 		logger.Error(err, "")

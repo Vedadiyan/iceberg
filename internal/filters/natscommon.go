@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -62,4 +63,30 @@ func GetStateManager(conn *nats.Conn) (nats.KeyValue, error) {
 		return nil, err
 	}
 	return kv, nil
+}
+func Await(conn *nats.Conn, awaitList []string) error {
+	if len(awaitList) > 0 {
+		var wg sync.WaitGroup
+		stateManager, err := GetStateManager(conn)
+		if err != nil {
+			return err
+		}
+		for _, await := range awaitList {
+			wg.Add(1)
+			watcher, err := stateManager.Watch(await)
+			if err != nil {
+				return err
+			}
+			go func() {
+				for update := range watcher.Updates() {
+					if string(update.Value()) == "true" {
+						wg.Done()
+						return
+					}
+				}
+			}()
+		}
+		wg.Wait()
+	}
+	return nil
 }
