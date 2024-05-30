@@ -251,7 +251,7 @@ func BuildFilterChainV1(filter FilterChainV1) (filters.Filter, error) {
 func BuildCallbacksV1(callbacks []CallbackV1) ([]filters.Filter, error) {
 	output := make([]filters.Filter, 0)
 	for _, filter := range callbacks {
-		level := "response"
+		level := "inherit"
 		if filter.Parallel {
 			level += "|parallel"
 		}
@@ -411,6 +411,10 @@ func Levels(level string) filters.Level {
 	levels := strings.Split(strings.ToLower(strings.Trim(level, " ")), "|")
 	for _, level := range levels {
 		switch level {
+		case "inherit":
+			{
+				output = output | filters.INHERIT
+			}
 		case "request":
 			{
 				output = output | filters.REQUEST
