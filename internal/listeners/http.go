@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/vedadiyan/iceberg/internal/common"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/logger"
@@ -16,7 +17,7 @@ func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
 	if HandleCORS(conf, w, r) {
 		return
 	}
-
+	r.Header.Add("x-request-id", uuid.NewString())
 	logger.Info("handling request", r.URL.String(), r.Method)
 	logger.Info("handling request filters")
 	err := filters.HandleFilter(r, conf.Filters, filters.REQUEST)

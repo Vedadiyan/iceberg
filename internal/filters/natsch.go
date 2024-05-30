@@ -95,6 +95,17 @@ func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
 	natschMsg := natsch.WrapMessage(msg)
 	natschMsg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
 	msg.Reply = fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject)
+	msg.Header.Add("reply", conn.NewRespInbox())
+	if len(filter.Filters) > 0 {
+		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
+
+		})
+		if err != nil {
+			logger.Error(err, "")
+		} else {
+			unsubscriber.AutoUnsubscribe(1)
+		}
+	}
 	err = conn.PublishMsgSch(natschMsg)
 	if err != nil {
 		logger.Error(err, "")

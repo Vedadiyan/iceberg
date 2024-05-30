@@ -14,7 +14,7 @@ spec:
       backend: http://127.0.0.1:8080
       filterChains: 
         - name: payment-intent
-          listener: "natsch:10000://[[default-nats]]/internal.middleware.paymentintent"
+          listener: "natsch:10000://[[default-nats]]/internal.middleware.verify-payment"
           level: "request"
           timeout: 30
           exchange: 
