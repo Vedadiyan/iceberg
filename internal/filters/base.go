@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/vedadiyan/iceberg/common"
+	"github.com/vedadiyan/iceberg/internal/common"
 )
 
 type (
