@@ -18,7 +18,7 @@ type (
 	}
 )
 
-func (filter *NATSFilter) Prepare(r *http.Request) (*nats.Msg, error) {
+func (filter *NATSFilter) GetMsg(r *http.Request) (*nats.Msg, error) {
 	req, err := CloneRequest(r)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (filter *NATSFilter) Prepare(r *http.Request) (*nats.Msg, error) {
 }
 
 func (filter *NATSFilter) HandleSync(r *http.Request) (*http.Response, error) {
-	msg, err := filter.Prepare(r)
+	msg, err := filter.GetMsg(r)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (filter *NATSFilter) HandleSync(r *http.Request) (*http.Response, error) {
 }
 
 func (filter *NATSFilter) HandleAsync(r *http.Request) {
-	msg, err := filter.Prepare(r)
+	msg, err := filter.GetMsg(r)
 	if err != nil {
 		log.Println(err)
 	}
