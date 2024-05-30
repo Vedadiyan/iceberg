@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bytes"
 	"io"
 	"net/http"
 	"time"
@@ -57,18 +56,6 @@ func (filter *NATSFilter) Handle(r *http.Request) (*http.Response, error) {
 	return MsgToResponse(res)
 }
 
-func MsgToResponse(msg *nats.Msg) (*http.Response, error) {
-	response := http.Response{}
-	response.Header = http.Header{}
-	response.Body = io.NopCloser(bytes.NewBuffer(msg.Data))
-	for key, values := range msg.Header {
-		for _, value := range values {
-			response.Header.Add(key, value)
-		}
-	}
-	return &response, nil
-}
-
 func (filter *NATSFilter) HandleParellel(r *http.Request) error {
 	msg, err := filter.Prepare(r)
 	if err != nil {
@@ -80,10 +67,7 @@ func (filter *NATSFilter) HandleParellel(r *http.Request) error {
 	}
 	msg.Reply = conn.NewRespInbox()
 	unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
-		req, err := RequestFrom(MsgToResponse(msg))
-		if err != nil {
-
-		}
+		req, _ := RequestFrom(MsgToResponse(msg))
 		_ = HandleFilter(req, filter.Filters, RESPONSE)
 	})
 	if err != nil {
