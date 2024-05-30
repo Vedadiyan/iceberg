@@ -52,11 +52,11 @@ type (
 )
 
 const (
-	REQUEST  Level = 2
-	RESPONSE Level = 4
-	CONNECT  Level = 8
-	PARALLEL Level = 16
-	INHERIT  Level = 32
+	INHERIT  Level = 0
+	REQUEST  Level = 1
+	RESPONSE Level = 2
+	CONNECT  Level = 4
+	PARALLEL Level = 8
 
 	HEADER_CONTINUE_ON_ERROR KnownHeader = "x-continue-on-error"
 )
