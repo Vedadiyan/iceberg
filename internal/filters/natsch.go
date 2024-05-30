@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nats-io/nats.go"
 	"github.com/vedadiyan/goal/pkg/di"
 	"github.com/vedadiyan/iceberg/internal/logger"
 	"github.com/vedadiyan/natsch"
@@ -57,13 +58,12 @@ func (filter *NATSCHFilter) HandleSync(r *http.Request) (*http.Response, error) 
 	natschMsg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
 	msg.Reply = fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject)
 	var wg sync.WaitGroup
-	var res *natsch.Msg
+	var res *nats.Msg
 	if len(filter.Filters) > 0 {
 		wg.Add(1)
-		_, err = conn.QueueSubscribeSch(fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject), "balanced", func(msg *natsch.Msg) {
-			defer wg.Done()
+		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
 			res = msg
-			req, err := RequestFrom(MsgToResponse(msg.Msg))
+			req, err := RequestFrom(MsgToResponse(msg))
 			if err != nil {
 				logger.Error(err, "")
 				return
@@ -71,13 +71,14 @@ func (filter *NATSCHFilter) HandleSync(r *http.Request) (*http.Response, error) 
 			err = HandleFilter(req, filter.Filters, INHERIT)
 			if err != nil {
 				logger.Error(err, "")
+				return
 			}
 		})
 		if err != nil {
-			if err != nil {
-				return nil, err
-			}
+			logger.Error(err, "")
+			return nil, err
 		}
+		unsubscriber.AutoUnsubscribe(1)
 	}
 	err = conn.PublishMsgSch(natschMsg)
 	if err != nil {
@@ -85,7 +86,7 @@ func (filter *NATSCHFilter) HandleSync(r *http.Request) (*http.Response, error) 
 		return nil, err
 	}
 	wg.Wait()
-	return MsgToResponse(res.Msg)
+	return MsgToResponse(res)
 }
 
 func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
@@ -103,8 +104,8 @@ func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
 	natschMsg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
 	msg.Reply = fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject)
 	if len(filter.Filters) > 0 {
-		_, err = conn.QueueSubscribeSch(fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject), "balanced", func(msg *natsch.Msg) {
-			req, err := RequestFrom(MsgToResponse(msg.Msg))
+		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
+			req, err := RequestFrom(MsgToResponse(msg))
 			if err != nil {
 				logger.Error(err, "")
 				return
@@ -112,18 +113,41 @@ func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
 			err = HandleFilter(req, filter.Filters, INHERIT)
 			if err != nil {
 				logger.Error(err, "")
+				return
 			}
 		})
 		if err != nil {
-			if err != nil {
-				logger.Error(err, "")
-				return
-			}
+			logger.Error(err, "")
+			return
 		}
+		unsubscriber.AutoUnsubscribe(1)
 	}
 	err = conn.PublishMsgSch(natschMsg)
 	if err != nil {
 		logger.Error(err, "")
 		return
+	}
+}
+
+func (filter *NATSCHFilter) DurableSubscription() {
+	conn, err := di.ResolveWithName[natsch.Conn](filter.Url, nil)
+	if err != nil {
+		logger.Error(err, "")
+		return
+	}
+	_, err = conn.QueueSubscribeSch(fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject), "balanced", func(msg *natsch.Msg) {
+		reply := msg.Header.Get("reply")
+		msg.Reply = reply
+		err := conn.Conn.PublishMsg(msg.Msg)
+		if err != nil {
+			logger.Error(err, "")
+			return
+		}
+	})
+	if err != nil {
+		if err != nil {
+			logger.Error(err, "")
+			return
+		}
 	}
 }
