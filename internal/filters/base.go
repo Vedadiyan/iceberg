@@ -168,7 +168,7 @@ func HandleFilter(r *http.Request, filters []Filter, level Level) error {
 			continue
 		}
 		if !filter.Is(PARALLEL) {
-			err := HandlerFunc(filter, r)
+			err := handlerFunc(filter, r)
 			if err != nil {
 				return err
 			}
@@ -179,7 +179,7 @@ func HandleFilter(r *http.Request, filters []Filter, level Level) error {
 	return nil
 }
 
-func HandlerFunc(filter Filter, r *http.Request) error {
+func handlerFunc(filter Filter, r *http.Request) error {
 	res, err := filter.HandleSync(r)
 	if err != nil {
 		return common.NewHandlerError(common.HANDLER_ERROR_INTERNAL, 500, err.Error())
