@@ -113,7 +113,6 @@ func (filter *NATSCHFilter) AddDurableSubscription() {
 		err := conn.Conn.PublishMsg(msg.Msg)
 		if err != nil {
 			logger.Error(err, "")
-			return
 		}
 		req, err := RequestFrom(MsgToResponse(msg.Msg))
 		if err != nil {
