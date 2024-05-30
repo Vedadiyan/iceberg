@@ -68,7 +68,7 @@ func (filter *NATSFilter) HandleParellel(r *http.Request) {
 	msg.Reply = conn.NewRespInbox()
 	unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
 		req, _ := RequestFrom(MsgToResponse(msg))
-		_ = HandleFilter(req, filter.Filters, RESPONSE)
+		_ = HandleFilter(req, filter.Filters, INHERIT)
 	})
 	if err != nil {
 

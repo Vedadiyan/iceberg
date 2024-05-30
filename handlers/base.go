@@ -56,6 +56,7 @@ const (
 	RESPONSE Level = 4
 	CONNECT  Level = 8
 	PARALLEL Level = 16
+	INHERIT  Level = 32
 
 	HEADER_CONTINUE_ON_ERROR KnownHeader = "x-continue-on-error"
 )
