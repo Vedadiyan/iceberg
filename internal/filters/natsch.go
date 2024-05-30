@@ -87,23 +87,28 @@ func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
 		logger.Error(err, "")
 		return
 	}
+	stateManager, err := GetStateManager(conn.Conn)
+	if err != nil {
+		logger.Error(err, "")
+		return
+	}
 	msg, err := GetMsg(r, filter.Subject)
 	if err != nil {
 		logger.Error(err, "")
 		return
 	}
+	key := fmt.Sprintf("%s_%s", filter.Name, r.Header.Get("x-request-id"))
 	natschMsg := natsch.WrapMessage(msg)
 	natschMsg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
 	msg.Reply = fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject)
 	msg.Header.Add("reply", conn.NewRespInbox())
+	_, err = stateManager.Create(key, []byte("false"))
+	if err != nil {
+		logger.Error(err, "")
+		return
+	}
 	if len(filter.Filters) > 0 {
 		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
-			key := fmt.Sprintf("%s_%s", filter.Name, r.Header.Get("x-request-id"))
-			stateManager, err := GetStateManager(conn.Conn)
-			if err != nil {
-				logger.Error(err, "")
-				return
-			}
 			_, err = stateManager.Put(key, []byte("true"))
 			if err != nil {
 				logger.Error(err, "")

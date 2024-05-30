@@ -45,12 +45,23 @@ func (filter *NATSFilter) HandleSync(r *http.Request) (*http.Response, error) {
 }
 
 func (filter *NATSFilter) HandleAsync(r *http.Request) {
+	conn, err := di.ResolveWithName[nats.Conn](filter.Url, nil)
+	if err != nil {
+		logger.Error(err, "")
+		return
+	}
 	msg, err := GetMsg(r, filter.Subject)
 	if err != nil {
 		logger.Error(err, "")
 		return
 	}
-	conn, err := di.ResolveWithName[nats.Conn](filter.Url, nil)
+	stateManager, err := GetStateManager(conn)
+	if err != nil {
+		logger.Error(err, "")
+		return
+	}
+	key := fmt.Sprintf("%s_%s", filter.Name, r.Header.Get("x-request-id"))
+	_, err = stateManager.Put(key, []byte("false"))
 	if err != nil {
 		logger.Error(err, "")
 		return
@@ -58,12 +69,6 @@ func (filter *NATSFilter) HandleAsync(r *http.Request) {
 	if len(filter.Filters) > 0 {
 		msg.Reply = conn.NewRespInbox()
 		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
-			key := fmt.Sprintf("%s_%s", filter.Name, r.Header.Get("x-request-id"))
-			stateManager, err := GetStateManager(conn)
-			if err != nil {
-				logger.Error(err, "")
-				return
-			}
 			_, err = stateManager.Put(key, []byte("true"))
 			if err != nil {
 				logger.Error(err, "")

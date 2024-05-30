@@ -25,12 +25,3 @@ spec:
               listener: "natsch:10000://[[default-nats]]/internal.middleware.receipt"
               parallel: true
               timeout: 30
-            - name: generate-receipt-alternate
-              listener: "natsch:10000://[[default-nats]]/internal.middleware.receipt"
-              parallel: true
-              timeout: 30              
-            - name: awaiter-1
-              timeout: 30
-              await: 
-                - generate-receipt    
-                - generate-receipt-alternate          
