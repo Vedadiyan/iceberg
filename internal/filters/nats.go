@@ -1,6 +1,7 @@
 package filters
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -57,6 +58,17 @@ func (filter *NATSFilter) HandleAsync(r *http.Request) {
 	if len(filter.Filters) > 0 {
 		msg.Reply = conn.NewRespInbox()
 		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
+			key := fmt.Sprintf("%s_%s", filter.Name, r.Header.Get("x-request-id"))
+			stateManager, err := GetStateManager(conn)
+			if err != nil {
+				logger.Error(err, "")
+				return
+			}
+			_, err = stateManager.Put(key, []byte("true"))
+			if err != nil {
+				logger.Error(err, "")
+				return
+			}
 			req, err := RequestFrom(MsgToResponse(msg))
 			if err != nil {
 				logger.Error(err, "")
