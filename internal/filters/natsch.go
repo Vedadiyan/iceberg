@@ -98,7 +98,8 @@ func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
 	msg.Header.Add("reply", conn.NewRespInbox())
 	if len(filter.Filters) > 0 {
 		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
-
+			key := fmt.Sprintf("%s_%s", filter.Name, r.Header.Get("x-request-id"))
+			_ = key
 		})
 		if err != nil {
 			logger.Error(err, "")

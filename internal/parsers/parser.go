@@ -283,6 +283,7 @@ func BuildHttp(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 		}))
 	}
 	httpFilter := filters.HttpFilter{}
+	httpFilter.Name = filter.Name
 	httpFilter.Address = url
 	httpFilter.ExchangeHeaders = filter.Exchange.Headers
 	httpFilter.ExchangeBody = filter.Exchange.Body
@@ -313,6 +314,7 @@ func BuildNats(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 		})
 	}
 	natsFilter := filters.NATSFilter{}
+	natsFilter.Name = filter.Name
 	natsFilter.Address = url
 	natsFilter.ExchangeHeaders = filter.Exchange.Headers
 	natsFilter.ExchangeBody = filter.Exchange.Body
@@ -364,6 +366,7 @@ func BuildNatsCh(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 		})
 	}
 	natsFilter := filters.NATSCHFilter{}
+	natsFilter.Name = filter.Name
 	natsFilter.Address = url
 	natsFilter.ExchangeHeaders = filter.Exchange.Headers
 	natsFilter.ExchangeBody = filter.Exchange.Body
@@ -399,6 +402,7 @@ func BuildGrpc(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 		})
 	}
 	grpcFilter := filters.GRPCFilter{}
+	grpcFilter.Name = filter.Name
 	grpcFilter.Address = url
 	grpcFilter.ExchangeHeaders = filter.Exchange.Headers
 	grpcFilter.ExchangeBody = filter.Exchange.Body

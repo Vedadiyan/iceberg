@@ -20,6 +20,7 @@ type (
 	}
 	FilterBase struct {
 		Filter
+		Name            string
 		Address         *url.URL
 		ExchangeHeaders []string
 		DropHeaders     []string
