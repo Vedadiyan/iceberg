@@ -34,6 +34,4 @@ func (*DebugLogger) Warning(message string, params ...any) {
 	log.Println(payload...)
 }
 
-func (*DebugLogger) Error(err error, message string, params ...any) {
-
-}
+func (*DebugLogger) Error(err error, message string, params ...any) {}
