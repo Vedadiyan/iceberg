@@ -34,19 +34,19 @@ func Color(message string, color int) string {
 }
 
 func (*DebugLogger) Info(message string, params ...any) {
-	payload := []any{Color("INFO", CYAN), message}
+	payload := []any{Color("[INFO]", CYAN), message}
 	payload = append(payload, params...)
 	log.Println(payload...)
 }
 
 func (*DebugLogger) Warning(message string, params ...any) {
-	payload := []any{Color("WARNING", YELLOW), message}
+	payload := []any{Color("[WARNING]", YELLOW), message}
 	payload = append(payload, params...)
 	log.Println(payload...)
 }
 
 func (*DebugLogger) Error(err error, message string, params ...any) {
-	payload := []any{Color("ERROR", RED), err, message}
+	payload := []any{Color("[ERROR]", RED), err, message}
 	payload = append(payload, params...)
 	log.Println(payload...)
 }
