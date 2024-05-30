@@ -64,6 +64,7 @@ func (filter *NATSCHFilter) HandleSync(r *http.Request) (*http.Response, error) 
 		wg.Add(1)
 		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
 			res = msg
+			wg.Done()
 		})
 		if err != nil {
 			logger.Error(err, "")
