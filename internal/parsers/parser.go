@@ -373,6 +373,7 @@ func BuildNatsCh(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 	natsFilter.Deadline = delay
 	natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
 	natsFilter.Filters = callbacks
+	natsFilter.AddDurableSubscription()
 	return &natsFilter, nil
 }
 

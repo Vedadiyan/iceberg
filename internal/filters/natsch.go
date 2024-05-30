@@ -101,7 +101,7 @@ func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
 	}
 }
 
-func (filter *NATSCHFilter) DurableSubscription() {
+func (filter *NATSCHFilter) AddDurableSubscription() {
 	conn, err := di.ResolveWithName[natsch.Conn](filter.Url, nil)
 	if err != nil {
 		logger.Error(err, "")
