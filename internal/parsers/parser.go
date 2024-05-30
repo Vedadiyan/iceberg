@@ -51,11 +51,12 @@ type (
 		Timeout   int            `yaml:"timeout"`
 	}
 	CallbackV1 struct {
-		Name      string `yaml:"name"`
-		Listerner string `yaml:"listener"`
-		Parallel  bool   `yaml:"parallel"`
-		Method    string `yaml:"method"`
-		Timeout   int    `yaml:"timeout"`
+		Name      string       `yaml:"name"`
+		Listerner string       `yaml:"listener"`
+		Parallel  bool         `yaml:"parallel"`
+		Method    string       `yaml:"method"`
+		Timeout   int          `yaml:"timeout"`
+		Callbacks []CallbackV1 `yaml:"callbacks"`
 	}
 	ExchangeV1 struct {
 		Headers []string `yaml:"headers"`
@@ -196,125 +197,11 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler
 		conf.Frontend = frontendUrl
 		filterList := make([]filters.Filter, 0)
 		for _, filter := range resource.FilterChains {
-			url, err := url.Parse(filter.Listerner)
+			filter, err := FilterBuilder(filter)
 			if err != nil {
 				return nil, err
 			}
-			level := Levels(filter.Level)
-			switch strings.ToLower(url.Scheme) {
-			case "http", "https":
-				{
-					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
-						host := strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
-						auto.Register(auto.New(host, false, func(value string) {
-							url.Host = value
-						}))
-					}
-					httpFilter := filters.HttpFilter{}
-					httpFilter.Address = url
-					httpFilter.ExchangeHeaders = filter.Exchange.Headers
-					httpFilter.ExchangeBody = filter.Exchange.Body
-					httpFilter.Level = level
-					httpFilter.Method = filter.Method
-					httpFilter.Timeout = filter.Timeout
-					filterList = append(filterList, &httpFilter)
-				}
-			case "nats":
-				{
-					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
-						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
-						auto.Register(auto.New(url.Host, false, func(value string) {
-							logger.Info("nats", value)
-							_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
-								return nats.Connect(value)
-							})
-						}))
-					} else {
-						_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
-							return nats.Connect(url.Host)
-						})
-					}
-					natsFilter := filters.NATSFilter{}
-					natsFilter.Address = url
-					natsFilter.ExchangeHeaders = filter.Exchange.Headers
-					natsFilter.ExchangeBody = filter.Exchange.Body
-					natsFilter.Level = level
-					natsFilter.Timeout = filter.Timeout
-					natsFilter.Url = url.Host
-					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
-					filterList = append(filterList, &natsFilter)
-				}
-			case "natsch":
-				{
-					var delay int
-					if len(url.Opaque) > 0 {
-						segments := strings.Split(url.Opaque, "://")
-						if len(segments) != 2 {
-							return nil, fmt.Errorf("invalid natsch scheme")
-						}
-						value, err := strconv.ParseInt(segments[0], 10, 32)
-						if err != nil {
-							return nil, err
-						}
-						delay = int(value)
-						url, err = url.Parse(fmt.Sprintf("natsch://%s", segments[1]))
-						if err != nil {
-							return nil, err
-						}
-					}
-					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
-						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
-						auto.Register(auto.New(url.Host, false, func(value string) {
-							logger.Info("natsch", value)
-							_ = di.AddSinletonWithName(url.Host, func() (instance *natsch.Conn, err error) {
-								conn, err := nats.Connect(value)
-								if err != nil {
-									return nil, err
-								}
-								return natsch.New(conn)
-							})
-						}))
-					} else {
-						_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
-							return nats.Connect(url.Host)
-						})
-					}
-					natsFilter := filters.NATSCHFilter{}
-					natsFilter.Address = url
-					natsFilter.ExchangeHeaders = filter.Exchange.Headers
-					natsFilter.ExchangeBody = filter.Exchange.Body
-					natsFilter.Level = level
-					natsFilter.Timeout = filter.Timeout
-					natsFilter.Url = url.Host
-					natsFilter.Deadline = delay
-					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
-					filterList = append(filterList, &natsFilter)
-				}
-			case "grpc":
-				{
-					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
-						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
-						auto.Register(auto.New(url.Host, false, func(value string) {
-							_ = di.AddSinletonWithName(url.Host, func() (instance *grpc.ClientConn, err error) {
-								return grpc.Dial(value)
-							})
-						}))
-					} else {
-						_ = di.AddSinletonWithName(url.Host, func() (instance *grpc.ClientConn, err error) {
-							return grpc.Dial(url.Host)
-						})
-					}
-					grpcFilter := filters.GRPCFilter{}
-					grpcFilter.Address = url
-					grpcFilter.ExchangeHeaders = filter.Exchange.Headers
-					grpcFilter.ExchangeBody = filter.Exchange.Body
-					grpcFilter.Level = level
-					grpcFilter.Timeout = filter.Timeout
-					grpcFilter.Url = url.Host
-					grpcFilter.Subject = strings.TrimPrefix(url.Path, "/")
-					filterList = append(filterList, &grpcFilter)
-				}
-			}
+			filterList = append(filterList, filter)
 		}
 		logger.Info("config parsed")
 		conf.Filters = filterList
@@ -325,6 +212,151 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler
 	return func() error {
 		return http.ListenAndServe(specV1.Spec.Listen, mux)
 	}, nil
+}
+
+func FilterBuilder(filter FilterChainV1) (filters.Filter, error) {
+	url, err := url.Parse(filter.Listerner)
+	if err != nil {
+		return nil, err
+	}
+	level := Levels(filter.Level)
+	callbacks := make([]filters.Filter, 0)
+	for _, filter := range filter.Callbacks {
+		level := "response"
+		if filter.Parallel {
+			level += "|parallel"
+		}
+		callback, err := FilterBuilder(FilterChainV1{
+			Name:      filter.Name,
+			Listerner: filter.Listerner,
+			Method:    filter.Method,
+			Level:     level,
+			Callbacks: filter.Callbacks,
+		})
+		if err != nil {
+			return nil, err
+		}
+		callbacks = append(callbacks, callback)
+	}
+	switch strings.ToLower(url.Scheme) {
+	case "http", "https":
+		{
+			if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
+				host := strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
+				auto.Register(auto.New(host, false, func(value string) {
+					url.Host = value
+				}))
+			}
+			httpFilter := filters.HttpFilter{}
+			httpFilter.Address = url
+			httpFilter.ExchangeHeaders = filter.Exchange.Headers
+			httpFilter.ExchangeBody = filter.Exchange.Body
+			httpFilter.Level = level
+			httpFilter.Method = filter.Method
+			httpFilter.Timeout = filter.Timeout
+			httpFilter.Filters = callbacks
+			return &httpFilter, nil
+		}
+	case "nats":
+		{
+			if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
+				url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
+				auto.Register(auto.New(url.Host, false, func(value string) {
+					logger.Info("nats", value)
+					_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
+						return nats.Connect(value)
+					})
+				}))
+			} else {
+				_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
+					return nats.Connect(url.Host)
+				})
+			}
+			natsFilter := filters.NATSFilter{}
+			natsFilter.Address = url
+			natsFilter.ExchangeHeaders = filter.Exchange.Headers
+			natsFilter.ExchangeBody = filter.Exchange.Body
+			natsFilter.Level = level
+			natsFilter.Timeout = filter.Timeout
+			natsFilter.Url = url.Host
+			natsFilter.Filters = callbacks
+			natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
+			return &natsFilter, nil
+		}
+	case "natsch":
+		{
+			var delay int
+			if len(url.Opaque) > 0 {
+				segments := strings.Split(url.Opaque, "://")
+				if len(segments) != 2 {
+					return nil, fmt.Errorf("invalid natsch scheme")
+				}
+				value, err := strconv.ParseInt(segments[0], 10, 32)
+				if err != nil {
+					return nil, err
+				}
+				delay = int(value)
+				url, err = url.Parse(fmt.Sprintf("natsch://%s", segments[1]))
+				if err != nil {
+					return nil, err
+				}
+			}
+			if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
+				url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
+				auto.Register(auto.New(url.Host, false, func(value string) {
+					logger.Info("natsch", value)
+					_ = di.AddSinletonWithName(url.Host, func() (instance *natsch.Conn, err error) {
+						conn, err := nats.Connect(value)
+						if err != nil {
+							return nil, err
+						}
+						return natsch.New(conn)
+					})
+				}))
+			} else {
+				_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
+					return nats.Connect(url.Host)
+				})
+			}
+			natsFilter := filters.NATSCHFilter{}
+			natsFilter.Address = url
+			natsFilter.ExchangeHeaders = filter.Exchange.Headers
+			natsFilter.ExchangeBody = filter.Exchange.Body
+			natsFilter.Level = level
+			natsFilter.Timeout = filter.Timeout
+			natsFilter.Url = url.Host
+			natsFilter.Deadline = delay
+			natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
+			natsFilter.Filters = callbacks
+			return &natsFilter, nil
+		}
+	case "grpc":
+		{
+			if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
+				url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
+				auto.Register(auto.New(url.Host, false, func(value string) {
+					_ = di.AddSinletonWithName(url.Host, func() (instance *grpc.ClientConn, err error) {
+						return grpc.Dial(value)
+					})
+				}))
+			} else {
+				_ = di.AddSinletonWithName(url.Host, func() (instance *grpc.ClientConn, err error) {
+					return grpc.Dial(url.Host)
+				})
+			}
+			grpcFilter := filters.GRPCFilter{}
+			grpcFilter.Address = url
+			grpcFilter.ExchangeHeaders = filter.Exchange.Headers
+			grpcFilter.ExchangeBody = filter.Exchange.Body
+			grpcFilter.Level = level
+			grpcFilter.Timeout = filter.Timeout
+			grpcFilter.Url = url.Host
+			grpcFilter.Subject = strings.TrimPrefix(url.Path, "/")
+			grpcFilter.Filters = callbacks
+			return &grpcFilter, nil
+		}
+	}
+	return nil, fmt.Errorf("invalid filter")
 }
 
 func Levels(level string) filters.Level {
