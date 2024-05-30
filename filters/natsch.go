@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/nats-io/nats.go"
 	"github.com/vedadiyan/goal/pkg/di"
 	"github.com/vedadiyan/natsch"
 )
@@ -60,8 +59,8 @@ func (filter *NATSCHFilter) InitAsyncHandler() error {
 		log.Println(err)
 		return err
 	}
-	_, err = conn.Subscribe(fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject), func(msg *nats.Msg) {
-		req, err := RequestFrom(MsgToResponse(msg))
+	_, err = conn.QueueSubscribeSch(fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject), "balanced", func(msg *natsch.Msg) {
+		req, err := RequestFrom(MsgToResponse(msg.Msg))
 		if err != nil {
 			log.Println(err)
 			return
