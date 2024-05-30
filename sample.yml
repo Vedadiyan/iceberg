@@ -20,3 +20,7 @@ spec:
           exchange: 
             headers: 
               - x-payment-token
+          callbacks: 
+            - name: generate-receipt
+              listener: "natsch:10000://[[default-nats]]/internal.middleware.paymentintent"
+              timeout: 30
