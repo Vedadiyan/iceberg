@@ -13,10 +13,9 @@ import (
 type (
 	NATSCHFilter struct {
 		FilterBase
-		Url       string
-		Subject   string
-		Deadline  int
-		Callbacks map[string][]string
+		Url      string
+		Subject  string
+		Deadline int
 	}
 )
 
