@@ -101,11 +101,10 @@ func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
 	}
 }
 
-func (filter *NATSCHFilter) AddDurableSubscription() {
+func (filter *NATSCHFilter) AddDurableSubscription() error {
 	conn, err := di.ResolveWithName[natsch.Conn](filter.Url, nil)
 	if err != nil {
-		logger.Error(err, "")
-		return
+		return err
 	}
 	_, err = conn.QueueSubscribeSch(fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject), "balanced", func(msg *natsch.Msg) {
 		msg.Subject = msg.Reply
@@ -126,9 +125,7 @@ func (filter *NATSCHFilter) AddDurableSubscription() {
 		}
 	})
 	if err != nil {
-		if err != nil {
-			logger.Error(err, "")
-			return
-		}
+		return err
 	}
+	return nil
 }
