@@ -30,6 +30,16 @@ func (filter *NATSFilter) HandleSync(r *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(filter.Filters) > 0 {
+		req, err := RequestFrom(MsgToResponse(msg))
+		if err != nil {
+			return nil, err
+		}
+		err = HandleFilter(req, filter.Filters, INHERIT)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return MsgToResponse(res)
 }
 
@@ -42,22 +52,24 @@ func (filter *NATSFilter) HandleAsync(r *http.Request) {
 	if err != nil {
 		log.Println(err)
 	}
-	msg.Reply = conn.NewRespInbox()
-	unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
-		req, err := RequestFrom(MsgToResponse(msg))
+	if len(filter.Filters) > 0 {
+		msg.Reply = conn.NewRespInbox()
+		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
+			req, err := RequestFrom(MsgToResponse(msg))
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			err = HandleFilter(req, filter.Filters, INHERIT)
+			if err != nil {
+				log.Println(err)
+			}
+		})
 		if err != nil {
 			log.Println(err)
-			return
 		}
-		err = HandleFilter(req, filter.Filters, INHERIT)
-		if err != nil {
-			log.Println(err)
-		}
-	})
-	if err != nil {
-		log.Println(err)
+		unsubscriber.AutoUnsubscribe(1)
 	}
-	unsubscriber.AutoUnsubscribe(1)
 	err = conn.PublishMsg(msg)
 	if err != nil {
 		log.Println(err)

@@ -22,5 +22,6 @@ spec:
               - x-payment-token
           callbacks: 
             - name: generate-receipt
-              listener: "natsch:10000://[[default-nats]]/internal.middleware.paymentintent"
+              listener: "natsch:10000://[[default-nats]]/internal.middleware.receipt"
+              parallel: true
               timeout: 30
