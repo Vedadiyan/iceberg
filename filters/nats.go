@@ -18,7 +18,7 @@ type (
 )
 
 func (filter *NATSFilter) HandleSync(r *http.Request) (*http.Response, error) {
-	msg, err := filter.GetMsg(r)
+	msg, err := GetMsg(r, filter.Subject)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func (filter *NATSFilter) HandleSync(r *http.Request) (*http.Response, error) {
 }
 
 func (filter *NATSFilter) HandleAsync(r *http.Request) {
-	msg, err := filter.GetMsg(r)
+	msg, err := GetMsg(r, filter.Subject)
 	if err != nil {
 		log.Println(err)
 	}

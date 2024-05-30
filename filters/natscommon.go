@@ -8,7 +8,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-func (filter *NATSFilter) GetMsg(r *http.Request) (*nats.Msg, error) {
+func GetMsg(r *http.Request, subject string) (*nats.Msg, error) {
 	req, err := CloneRequest(r)
 	if err != nil {
 		return nil, err
@@ -18,7 +18,7 @@ func (filter *NATSFilter) GetMsg(r *http.Request) (*nats.Msg, error) {
 		return nil, err
 	}
 	msg := nats.Msg{}
-	msg.Subject = filter.Subject
+	msg.Subject = subject
 	msg.Data = data
 	msg.Header = nats.Header{}
 	for key, values := range req.Header {

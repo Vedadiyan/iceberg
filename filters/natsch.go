@@ -1,8 +1,6 @@
 package filters
 
 import (
-	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"time"
@@ -23,44 +21,57 @@ type (
 )
 
 func (filter *NATSCHFilter) HandleSync(r *http.Request) (*http.Response, error) {
-	log.Println("handling natsch")
-	req, err := CloneRequest(r)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-	data, err := io.ReadAll(req.Body)
-	if err != nil {
-		return nil, err
-	}
 	conn, err := di.ResolveWithName[natsch.Conn](filter.Url, nil)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
-	msg := natsch.NewMsg()
-	msg.Subject = filter.Subject
-	msg.Data = data
-	msg.Header = nats.Header{}
-	for key, values := range req.Header {
-		for _, value := range values {
-			msg.Header.Add(key, value)
-		}
+	msg, err := GetMsg(r, filter.Subject)
+	if err != nil {
+		log.Println(err)
+		return nil, err
 	}
-	msg.Header.Add("path", req.URL.Path)
-	msg.Header.Add("query", req.URL.RawQuery)
-	for key, values := range filter.Callbacks {
-		msg.Header.Add("x-callbacks", key)
-		key := fmt.Sprintf("x-callback-%s", key)
-		for _, value := range values {
-			msg.Header.Add(key, value)
-		}
-	}
-	msg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
-	err = conn.PublishMsgSch(msg)
+	natschMsg := natsch.WrapMessage(msg)
+	natschMsg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
+	err = conn.PublishMsgSch(natschMsg)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 	return nil, nil
+}
+
+func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
+	conn, err := di.ResolveWithName[natsch.Conn](filter.Url, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	msg, err := GetMsg(r, filter.Subject)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	natschMsg := natsch.WrapMessage(msg)
+	natschMsg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
+	msg.Reply = conn.NewRespInbox()
+	unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
+		req, err := RequestFrom(MsgToResponse(msg))
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		err = HandleFilter(req, filter.Filters, INHERIT)
+		if err != nil {
+			log.Println(err)
+		}
+	})
+	if err != nil {
+		log.Println(err)
+	}
+	unsubscriber.AutoUnsubscribe(1)
+	err = conn.PublishMsgSch(natschMsg)
+	if err != nil {
+		log.Println(err)
+	}
 }
