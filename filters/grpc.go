@@ -53,7 +53,7 @@ func (GRPCCodec) Unmarshal(data []byte, v any) (err error) {
 	return nil
 }
 
-func (filter *GRPCFilter) Handle(r *http.Request) (*http.Response, error) {
+func (filter *GRPCFilter) HandleSync(r *http.Request) (*http.Response, error) {
 	req, err := CloneRequest(r, WithUrl(filter.Address))
 	if err != nil {
 		return nil, err

@@ -22,7 +22,7 @@ type (
 	}
 )
 
-func (filter *NATSCHFilter) Handle(r *http.Request) (*http.Response, error) {
+func (filter *NATSCHFilter) HandleSync(r *http.Request) (*http.Response, error) {
 	log.Println("handling natsch")
 	req, err := CloneRequest(r)
 	if err != nil {

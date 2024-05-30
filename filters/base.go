@@ -14,8 +14,8 @@ import (
 type (
 	Level  int
 	Filter interface {
-		Handle(r *http.Request) (*http.Response, error)
-		HandleParellel(r *http.Request)
+		HandleSync(r *http.Request) (*http.Response, error)
+		HandleAsync(r *http.Request)
 		Is(level Level) bool
 		MoveTo(*http.Response, *http.Request) error
 	}
@@ -187,13 +187,13 @@ func HandleFilter(r *http.Request, filters []Filter, level Level) error {
 			}
 			return nil
 		}
-		filter.HandleParellel(r)
+		filter.HandleAsync(r)
 	}
 	return nil
 }
 
 func HandlerFunc(filter Filter, r *http.Request) error {
-	res, err := filter.Handle(r)
+	res, err := filter.HandleSync(r)
 	if err != nil {
 		return common.NewHandlerError(common.HANDLER_ERROR_INTERNAL, 500, err.Error())
 	}

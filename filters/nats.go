@@ -41,7 +41,7 @@ func (filter *NATSFilter) Prepare(r *http.Request) (*nats.Msg, error) {
 	return &msg, nil
 }
 
-func (filter *NATSFilter) Handle(r *http.Request) (*http.Response, error) {
+func (filter *NATSFilter) HandleSync(r *http.Request) (*http.Response, error) {
 	msg, err := filter.Prepare(r)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (filter *NATSFilter) Handle(r *http.Request) (*http.Response, error) {
 	return MsgToResponse(res)
 }
 
-func (filter *NATSFilter) HandleParellel(r *http.Request) {
+func (filter *NATSFilter) HandleAsync(r *http.Request) {
 	msg, err := filter.Prepare(r)
 	if err != nil {
 		log.Println(err)

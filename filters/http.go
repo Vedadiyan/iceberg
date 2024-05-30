@@ -12,7 +12,7 @@ type (
 	}
 )
 
-func (filter *HttpFilter) Handle(r *http.Request) (*http.Response, error) {
+func (filter *HttpFilter) HandleSync(r *http.Request) (*http.Response, error) {
 	req, err := CloneRequest(r, WithMethod(filter.Method), WithUrl(filter.Address))
 	if err != nil {
 		return nil, err
