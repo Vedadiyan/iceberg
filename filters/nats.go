@@ -1,7 +1,6 @@
 package filters
 
 import (
-	"io"
 	"log"
 	"net/http"
 	"time"
@@ -17,29 +16,6 @@ type (
 		Subject string
 	}
 )
-
-func (filter *NATSFilter) GetMsg(r *http.Request) (*nats.Msg, error) {
-	req, err := CloneRequest(r)
-	if err != nil {
-		return nil, err
-	}
-	data, err := io.ReadAll(req.Body)
-	if err != nil {
-		return nil, err
-	}
-	msg := nats.Msg{}
-	msg.Subject = filter.Subject
-	msg.Data = data
-	msg.Header = nats.Header{}
-	for key, values := range req.Header {
-		for _, value := range values {
-			msg.Header.Add(key, value)
-		}
-	}
-	msg.Header.Add("path", req.URL.Path)
-	msg.Header.Add("query", req.URL.RawQuery)
-	return &msg, nil
-}
 
 func (filter *NATSFilter) HandleSync(r *http.Request) (*http.Response, error) {
 	msg, err := filter.GetMsg(r)

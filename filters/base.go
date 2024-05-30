@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/nats-io/nats.go"
 	"github.com/vedadiyan/iceberg/common"
 )
 
@@ -128,18 +127,6 @@ func RequestFrom(res *http.Response, err error) (*http.Request, error) {
 		}
 	}
 	return r, nil
-}
-
-func MsgToResponse(msg *nats.Msg) (*http.Response, error) {
-	response := http.Response{}
-	response.Header = http.Header{}
-	response.Body = io.NopCloser(bytes.NewBuffer(msg.Data))
-	for key, values := range msg.Header {
-		for _, value := range values {
-			response.Header.Add(key, value)
-		}
-	}
-	return &response, nil
 }
 
 func WithUrl(url *url.URL) RequestOption {
