@@ -1,8 +1,12 @@
 package common
 
-import "fmt"
+import (
+	"fmt"
+	"net/http"
+)
 
 type (
+	Handler           func(*http.ServeMux)
 	HandlerErrorClass int
 	HandlerError      struct {
 		Class      HandlerErrorClass
