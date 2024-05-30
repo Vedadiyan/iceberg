@@ -119,13 +119,11 @@ func (filter *NATSCHFilter) AddDurableSubscription() error {
 		return err
 	}
 	_, err = conn.QueueSubscribeSch(fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject), "balanced", func(msg *natsch.Msg) {
-		if !filter.Is(PARALLEL) {
-			msg.Subject = msg.Reply
-			msg.Reply = ""
-			err := conn.Conn.PublishMsg(msg.Msg)
-			if err != nil {
-				logger.Error(err, "")
-			}
+		msg.Subject = msg.Reply
+		msg.Reply = ""
+		err := conn.Conn.PublishMsg(msg.Msg)
+		if err != nil {
+			logger.Error(err, "")
 		}
 		req, err := RequestFrom(MsgToResponse(msg.Msg))
 		if err != nil {
