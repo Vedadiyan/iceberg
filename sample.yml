@@ -15,7 +15,7 @@ spec:
       filterChains: 
         - name: payment-intent
           listener: "natsch:10000://[[default-nats]]/internal.middleware.paymentintent"
-          level: "response"
+          level: "request"
           timeout: 30
           exchange: 
             headers: 
@@ -25,3 +25,12 @@ spec:
               listener: "natsch:10000://[[default-nats]]/internal.middleware.receipt"
               parallel: true
               timeout: 30
+            - name: generate-receipt-alternate
+              listener: "natsch:10000://[[default-nats]]/internal.middleware.receipt"
+              parallel: true
+              timeout: 30              
+            - name: awaiter-1
+              timeout: 30
+              await: 
+                - generate-receipt    
+                - generate-receipt-alternate          

@@ -47,10 +47,12 @@ func (filter *NATSFilter) HandleAsync(r *http.Request) {
 	msg, err := GetMsg(r, filter.Subject)
 	if err != nil {
 		logger.Error(err, "")
+		return
 	}
 	conn, err := di.ResolveWithName[nats.Conn](filter.Url, nil)
 	if err != nil {
 		logger.Error(err, "")
+		return
 	}
 	if len(filter.Filters) > 0 {
 		msg.Reply = conn.NewRespInbox()
@@ -63,15 +65,18 @@ func (filter *NATSFilter) HandleAsync(r *http.Request) {
 			err = HandleFilter(req, filter.Filters, INHERIT)
 			if err != nil {
 				logger.Error(err, "")
+				return
 			}
 		})
 		if err != nil {
 			logger.Error(err, "")
+			return
 		}
 		unsubscriber.AutoUnsubscribe(1)
 	}
 	err = conn.PublishMsg(msg)
 	if err != nil {
 		logger.Error(err, "")
+		return
 	}
 }
