@@ -49,6 +49,7 @@ type (
 		Callbacks []CallbackV1   `yaml:"callbacks"`
 		Headers   map[string]any `yaml:"headers"`
 		Timeout   int            `yaml:"timeout"`
+		Await     []string       `yaml:"await"`
 	}
 	CallbackV1 struct {
 		Name      string       `yaml:"name"`
@@ -291,6 +292,7 @@ func BuildHttp(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 	httpFilter.Method = filter.Method
 	httpFilter.Timeout = filter.Timeout
 	httpFilter.Filters = callbacks
+	httpFilter.AwaitList = filter.Await
 	return &httpFilter, nil
 }
 
@@ -323,6 +325,7 @@ func BuildNats(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 	natsFilter.Url = url.Host
 	natsFilter.Filters = callbacks
 	natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
+	natsFilter.AwaitList = filter.Await
 	return &natsFilter, nil
 }
 
@@ -376,6 +379,7 @@ func BuildNatsCh(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 	natsFilter.Deadline = delay
 	natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
 	natsFilter.Filters = callbacks
+	natsFilter.AwaitList = filter.Await
 	err = natsFilter.AddDurableSubscription()
 	if err != nil {
 		return nil, err
@@ -411,6 +415,7 @@ func BuildGrpc(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 	grpcFilter.Url = url.Host
 	grpcFilter.Subject = strings.TrimPrefix(url.Path, "/")
 	grpcFilter.Filters = callbacks
+	grpcFilter.AwaitList = filter.Await
 	return &grpcFilter, nil
 }
 

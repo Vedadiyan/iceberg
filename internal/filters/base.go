@@ -28,6 +28,7 @@ type (
 		Level           Level
 		Timeout         int
 		Filters         []Filter
+		AwaitList       []string
 	}
 	Conf struct {
 		Frontend *url.URL
