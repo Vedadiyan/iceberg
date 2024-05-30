@@ -16,6 +16,7 @@ type (
 	Level  int
 	Filter interface {
 		Handle(r *http.Request) (*http.Response, error)
+		HandleParellel(r *http.Request)
 		Is(level Level) bool
 		MoveTo(*http.Response, *http.Request) error
 	}
@@ -186,7 +187,7 @@ func HandleFilter(r *http.Request, filters []Filter, level Level) error {
 			}
 			return nil
 		}
-		go HandlerFunc(filter, r)
+		filter.HandleParellel(r)
 	}
 	return nil
 }

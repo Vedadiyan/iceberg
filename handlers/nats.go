@@ -56,14 +56,14 @@ func (filter *NATSFilter) Handle(r *http.Request) (*http.Response, error) {
 	return MsgToResponse(res)
 }
 
-func (filter *NATSFilter) HandleParellel(r *http.Request) error {
+func (filter *NATSFilter) HandleParellel(r *http.Request) {
 	msg, err := filter.Prepare(r)
 	if err != nil {
-		return err
+
 	}
 	conn, err := di.ResolveWithName[nats.Conn](filter.Url, nil)
 	if err != nil {
-		return err
+
 	}
 	msg.Reply = conn.NewRespInbox()
 	unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
@@ -71,12 +71,11 @@ func (filter *NATSFilter) HandleParellel(r *http.Request) error {
 		_ = HandleFilter(req, filter.Filters, RESPONSE)
 	})
 	if err != nil {
-		return err
+
 	}
 	unsubscriber.AutoUnsubscribe(1)
 	err = conn.PublishMsg(msg)
 	if err != nil {
-		return err
+
 	}
-	return nil
 }
