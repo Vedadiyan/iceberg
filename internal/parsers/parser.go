@@ -46,7 +46,7 @@ type (
 		Level     string         `yaml:"level"`
 		Method    string         `yaml:"method"`
 		Exchange  ExchangeV1     `yaml:"exchange"`
-		Callbacks CallbackV1     `yaml:"callbacks"`
+		Callbacks []CallbackV1   `yaml:"callbacks"`
 		Headers   map[string]any `yaml:"headers"`
 		Timeout   int            `yaml:"timeout"`
 	}
