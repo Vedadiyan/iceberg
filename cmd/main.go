@@ -10,13 +10,13 @@ import (
 
 	"github.com/gorilla/websocket"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
-	"github.com/vedadiyan/iceberg/common"
-	"github.com/vedadiyan/iceberg/filters"
+	"github.com/vedadiyan/iceberg/internal/common"
+	"github.com/vedadiyan/iceberg/internal/filters"
+	"github.com/vedadiyan/iceberg/internal/parsers"
 )
 
 type (
 	StatusCodeClass int
-	Handler         func(*http.ServeMux)
 
 	WebSocketProxy struct {
 		Conf            *filters.Conf
@@ -196,7 +196,7 @@ func NewWebSocketProxy(conf *filters.Conf, w http.ResponseWriter, r *http.Reques
 	return &webSocketProxy, nil
 }
 
-func New(conf *filters.Conf) Handler {
+func HandlerFunc(conf *filters.Conf) common.Handler {
 	return func(sm *http.ServeMux) {
 		sm.HandleFunc(conf.Frontend.String(), func(w http.ResponseWriter, r *http.Request) {
 			if IsWebSocket(r) {
@@ -319,19 +319,19 @@ func Success(statusCode int) StatusCodeClass {
 }
 
 func main() {
-	ver, conf, err := Parse()
+	ver, conf, err := parsers.Parse()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
-	var server Server
+	var server parsers.Server
 	switch ver {
-	case VER_V1:
+	case parsers.VER_V1:
 		{
-			specV1, ok := conf.(*SpecV1)
+			specV1, ok := conf.(*parsers.SpecV1)
 			if !ok {
 				log.Fatalln("invalid program")
 			}
-			server, err = BuildV1(specV1)
+			server, err = parsers.BuildV1(specV1, HandlerFunc)
 			if err != nil {
 				log.Fatalln(err.Error())
 			}

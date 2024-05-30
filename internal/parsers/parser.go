@@ -1,4 +1,4 @@
-package main
+package parsers
 
 import (
 	"fmt"
@@ -12,7 +12,8 @@ import (
 	"github.com/nats-io/nats.go"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
 	"github.com/vedadiyan/goal/pkg/di"
-	"github.com/vedadiyan/iceberg/filters"
+	"github.com/vedadiyan/iceberg/internal/common"
+	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/natsch"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
@@ -174,7 +175,7 @@ func GetCORSValue[T any](key string, value any) (*T, error) {
 	return &v, nil
 }
 
-func BuildV1(specV1 *SpecV1) (Server, error) {
+func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler) (Server, error) {
 	mux := http.NewServeMux()
 	cors, err := GetCORSOptions(specV1)
 	if err != nil {
@@ -317,7 +318,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 		}
 		log.Println("config parsed")
 		conf.Filters = filterList
-		handler := New(&conf)
+		handler := handlerFunc(&conf)
 		log.Println(conf)
 		handler(mux)
 	}
