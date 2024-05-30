@@ -1,9 +1,8 @@
-package handlers
+package filters
 
 import (
 	"bytes"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -209,27 +208,4 @@ func HandlerFunc(filter Filter, r *http.Request) error {
 		return err
 	}
 	return nil
-}
-
-func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
-	req, err := CloneRequest(r, WithUrl(backend), WithMethod(r.Method))
-	if err != nil {
-		log.Println("proxy failed", err)
-		return nil, err
-	}
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Println("proxy failed", err)
-		return nil, err
-	}
-	if res.StatusCode%200 >= 100 && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
-		r, err := io.ReadAll(res.Body)
-		if err != nil {
-			log.Println("proxy failed", res.StatusCode, "unknown")
-			return nil, common.NewHandlerError(common.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
-		}
-		log.Println("proxy failed", res.StatusCode, string(r))
-		return nil, common.NewHandlerError(common.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
-	}
-	return res, nil
 }

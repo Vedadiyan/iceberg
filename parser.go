@@ -12,7 +12,7 @@ import (
 	"github.com/nats-io/nats.go"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
 	"github.com/vedadiyan/goal/pkg/di"
-	"github.com/vedadiyan/iceberg/handlers"
+	"github.com/vedadiyan/iceberg/filters"
 	"github.com/vedadiyan/natsch"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
@@ -95,14 +95,14 @@ func Parse() (ApiVersion, any, error) {
 	}
 }
 
-func GetCORSOptions(specV1 *SpecV1) (*handlers.CORS, error) {
+func GetCORSOptions(specV1 *SpecV1) (*filters.CORS, error) {
 	switch value := specV1.Spec.Configs.CORS.(type) {
 	case string:
 		{
 			if strings.ToLower(value) != "default" {
 				return nil, fmt.Errorf("unexpected value %s", value)
 			}
-			cors := &handlers.CORS{}
+			cors := &filters.CORS{}
 			cors.Origins = "*"
 			cors.Headers = "*"
 			cors.Methods = "GET, DELETE, OPTIONS, POST, PUT"
@@ -112,7 +112,7 @@ func GetCORSOptions(specV1 *SpecV1) (*handlers.CORS, error) {
 		}
 	case map[string]any:
 		{
-			cors := &handlers.CORS{}
+			cors := &filters.CORS{}
 			for key, value := range value {
 				switch strings.ToLower(key) {
 				case "origin":
@@ -181,7 +181,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 		return nil, err
 	}
 	for _, resource := range specV1.Spec.Resources {
-		conf := handlers.Conf{}
+		conf := filters.Conf{}
 		conf.CORS = cors
 		backendUrl, err := url.Parse(resource.Backend)
 		if err != nil {
@@ -193,7 +193,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 		}
 		conf.Backend = backendUrl
 		conf.Frontend = frontendUrl
-		filters := make([]handlers.Filter, 0)
+		filterList := make([]filters.Filter, 0)
 		for _, filter := range resource.FilterChains {
 			url, err := url.Parse(filter.Listerner)
 			if err != nil {
@@ -209,14 +209,14 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 							url.Host = value
 						}))
 					}
-					httpFilter := handlers.HttpFilter{}
+					httpFilter := filters.HttpFilter{}
 					httpFilter.Address = url
 					httpFilter.ExchangeHeaders = filter.Exchange.Headers
 					httpFilter.ExchangeBody = filter.Exchange.Body
 					httpFilter.Level = level
 					httpFilter.Method = filter.Method
 					httpFilter.Timeout = filter.Timeout
-					filters = append(filters, &httpFilter)
+					filterList = append(filterList, &httpFilter)
 				}
 			case "nats":
 				{
@@ -233,7 +233,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 							return nats.Connect(url.Host)
 						})
 					}
-					natsFilter := handlers.NATSFilter{}
+					natsFilter := filters.NATSFilter{}
 					natsFilter.Address = url
 					natsFilter.ExchangeHeaders = filter.Exchange.Headers
 					natsFilter.ExchangeBody = filter.Exchange.Body
@@ -241,7 +241,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					natsFilter.Timeout = filter.Timeout
 					natsFilter.Url = url.Host
 					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
-					filters = append(filters, &natsFilter)
+					filterList = append(filterList, &natsFilter)
 				}
 			case "natsch":
 				{
@@ -278,7 +278,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 							return nats.Connect(url.Host)
 						})
 					}
-					natsFilter := handlers.NATSCHFilter{}
+					natsFilter := filters.NATSCHFilter{}
 					natsFilter.Address = url
 					natsFilter.ExchangeHeaders = filter.Exchange.Headers
 					natsFilter.ExchangeBody = filter.Exchange.Body
@@ -287,7 +287,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					natsFilter.Url = url.Host
 					natsFilter.Deadline = delay
 					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
-					filters = append(filters, &natsFilter)
+					filterList = append(filterList, &natsFilter)
 				}
 			case "grpc":
 				{
@@ -303,7 +303,7 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 							return grpc.Dial(url.Host)
 						})
 					}
-					grpcFilter := handlers.GRPCFilter{}
+					grpcFilter := filters.GRPCFilter{}
 					grpcFilter.Address = url
 					grpcFilter.ExchangeHeaders = filter.Exchange.Headers
 					grpcFilter.ExchangeBody = filter.Exchange.Body
@@ -311,12 +311,12 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					grpcFilter.Timeout = filter.Timeout
 					grpcFilter.Url = url.Host
 					grpcFilter.Subject = strings.TrimPrefix(url.Path, "/")
-					filters = append(filters, &grpcFilter)
+					filterList = append(filterList, &grpcFilter)
 				}
 			}
 		}
 		log.Println("config parsed")
-		conf.Filters = filters
+		conf.Filters = filterList
 		handler := New(&conf)
 		log.Println(conf)
 		handler(mux)
@@ -326,22 +326,22 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 	}, nil
 }
 
-func Levels(level string) handlers.Level {
-	var output handlers.Level
+func Levels(level string) filters.Level {
+	var output filters.Level
 	levels := strings.Split(strings.ToLower(strings.Trim(level, " ")), "|")
 	for _, level := range levels {
 		switch level {
 		case "request":
 			{
-				output = output | handlers.REQUEST
+				output = output | filters.REQUEST
 			}
 		case "response":
 			{
-				output = output | handlers.RESPONSE
+				output = output | filters.RESPONSE
 			}
 		case "parallel":
 			{
-				output = output | handlers.PARALLEL
+				output = output | filters.PARALLEL
 			}
 		}
 	}

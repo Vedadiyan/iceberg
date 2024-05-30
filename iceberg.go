@@ -5,11 +5,13 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/gorilla/websocket"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
 	"github.com/vedadiyan/iceberg/common"
-	"github.com/vedadiyan/iceberg/handlers"
+	"github.com/vedadiyan/iceberg/filters"
 )
 
 type (
@@ -17,7 +19,7 @@ type (
 	Handler         func(*http.ServeMux)
 
 	WebSocketProxy struct {
-		Conf            *handlers.Conf
+		Conf            *filters.Conf
 		Conn            *websocket.Conn
 		ProxiedConn     *websocket.Conn
 		Request         *http.Request
@@ -59,7 +61,7 @@ func (wsp *WebSocketProxy) RequestHandler() {
 			})
 			continue
 		}
-		req, err := handlers.CloneRequest(wsp.Request)
+		req, err := filters.CloneRequest(wsp.Request)
 		if err != nil {
 			wsp.Conn.WriteJSON(common.HandlerError{
 				Class:      common.HANDLER_ERROR_INTERNAL,
@@ -69,7 +71,7 @@ func (wsp *WebSocketProxy) RequestHandler() {
 			return
 		}
 		req.Body = io.NopCloser(bytes.NewBuffer(message))
-		err = handlers.HandleFilter(req, wsp.Conf.Filters, handlers.REQUEST)
+		err = filters.HandleFilter(req, wsp.Conf.Filters, filters.REQUEST)
 		if err != nil {
 			if handlerError, ok := err.(common.HandlerError); ok {
 				wsp.Conn.WriteJSON(handlerError)
@@ -120,7 +122,7 @@ func (wsp *WebSocketProxy) ResponseHandler() {
 			})
 			continue
 		}
-		err = handlers.HandleFilter(req, wsp.Conf.Filters, handlers.RESPONSE)
+		err = filters.HandleFilter(req, wsp.Conf.Filters, filters.RESPONSE)
 		if err != nil {
 			if handlerError, ok := err.(common.HandlerError); ok {
 				wsp.Conn.WriteJSON(handlerError)
@@ -152,7 +154,30 @@ func (wsp *WebSocketProxy) ResponseHandler() {
 	}
 }
 
-func NewWebSocketProxy(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) (*WebSocketProxy, error) {
+func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
+	req, err := filters.CloneRequest(r, filters.WithUrl(backend), filters.WithMethod(r.Method))
+	if err != nil {
+		log.Println("proxy failed", err)
+		return nil, err
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Println("proxy failed", err)
+		return nil, err
+	}
+	if res.StatusCode%200 >= 100 && strings.ToLower(res.Header.Get(string(filters.HEADER_CONTINUE_ON_ERROR))) != "true" {
+		r, err := io.ReadAll(res.Body)
+		if err != nil {
+			log.Println("proxy failed", res.StatusCode, "unknown")
+			return nil, common.NewHandlerError(common.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
+		}
+		log.Println("proxy failed", res.StatusCode, string(r))
+		return nil, common.NewHandlerError(common.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
+	}
+	return res, nil
+}
+
+func NewWebSocketProxy(conf *filters.Conf, w http.ResponseWriter, r *http.Request) (*WebSocketProxy, error) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return nil, err
@@ -171,7 +196,7 @@ func NewWebSocketProxy(conf *handlers.Conf, w http.ResponseWriter, r *http.Reque
 	return &webSocketProxy, nil
 }
 
-func New(conf *handlers.Conf) Handler {
+func New(conf *filters.Conf) Handler {
 	return func(sm *http.ServeMux) {
 		sm.HandleFunc(conf.Frontend.String(), func(w http.ResponseWriter, r *http.Request) {
 			if IsWebSocket(r) {
@@ -192,7 +217,7 @@ func IsWebSocket(r *http.Request) bool {
 	return false
 }
 
-func HandleCORS(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) bool {
+func HandleCORS(conf *filters.Conf, w http.ResponseWriter, r *http.Request) bool {
 	if conf.CORS != nil {
 		if r.Method == "OPTIONS" {
 			w.Header().Add("access-control-allow-origin", conf.CORS.Origins)
@@ -207,14 +232,14 @@ func HandleCORS(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) boo
 	return false
 }
 
-func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
+func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
 	if HandleCORS(conf, w, r) {
 		return
 	}
 
 	log.Println("handling request", r.URL.String(), r.Method)
 	log.Println("handling request filters")
-	err := handlers.HandleFilter(r, conf.Filters, handlers.REQUEST)
+	err := filters.HandleFilter(r, conf.Filters, filters.REQUEST)
 	if err != nil {
 		log.Println("request filter failed", err)
 		if handlerError, ok := err.(common.HandlerError); ok {
@@ -227,7 +252,7 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	}
 	log.Println("handling proxy")
 	url := *r.URL
-	r, err = handlers.RequestFrom(handlers.HttpProxy(r, conf.Backend))
+	r, err = filters.RequestFrom(HttpProxy(r, conf.Backend))
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(502)
@@ -235,7 +260,7 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	}
 	r.URL = &url
 	log.Println("handling response filters")
-	err = handlers.HandleFilter(r, conf.Filters, handlers.RESPONSE)
+	err = filters.HandleFilter(r, conf.Filters, filters.RESPONSE)
 	if err != nil {
 		log.Println("response filter failed", err)
 		if handlerError, ok := err.(common.HandlerError); ok {
@@ -259,8 +284,8 @@ func HttpHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-func WebSocketHandler(conf *handlers.Conf, w http.ResponseWriter, r *http.Request) {
-	err := handlers.HandleFilter(r, conf.Filters, handlers.CONNECT)
+func WebSocketHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
+	err := filters.HandleFilter(r, conf.Filters, filters.CONNECT)
 	if err != nil {
 		if handlerError, ok := err.(common.HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
