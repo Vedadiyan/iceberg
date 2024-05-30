@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -59,23 +60,30 @@ func (filter *NATSFilter) Handle(r *http.Request) (*http.Response, error) {
 func (filter *NATSFilter) HandleParellel(r *http.Request) {
 	msg, err := filter.Prepare(r)
 	if err != nil {
-
+		log.Println(err)
 	}
 	conn, err := di.ResolveWithName[nats.Conn](filter.Url, nil)
 	if err != nil {
-
+		log.Println(err)
 	}
 	msg.Reply = conn.NewRespInbox()
 	unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
-		req, _ := RequestFrom(MsgToResponse(msg))
-		_ = HandleFilter(req, filter.Filters, INHERIT)
+		req, err := RequestFrom(MsgToResponse(msg))
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		err = HandleFilter(req, filter.Filters, INHERIT)
+		if err != nil {
+			log.Println(err)
+		}
 	})
 	if err != nil {
-
+		log.Println(err)
 	}
 	unsubscriber.AutoUnsubscribe(1)
 	err = conn.PublishMsg(msg)
 	if err != nil {
-
+		log.Println(err)
 	}
 }
