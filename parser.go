@@ -234,7 +234,6 @@ func BuildV1(specV1 *SpecV1) (Server, error) {
 					natsFilter.Timeout = filter.Timeout
 					natsFilter.Url = url.Host
 					natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
-					natsFilter.Callbacks = filter.Callbacks
 					filters = append(filters, &natsFilter)
 				}
 			case "natsch":

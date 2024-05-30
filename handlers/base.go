@@ -3,8 +3,12 @@ package handlers
 import (
 	"bytes"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"strings"
+
+	"github.com/vedadiyan/iceberg/common"
 )
 
 type (
@@ -22,6 +26,7 @@ type (
 		ExchangeBody    bool
 		Level           Level
 		Timeout         int
+		Filters         []Filter
 	}
 	Conf struct {
 		Frontend *url.URL
@@ -41,6 +46,7 @@ type (
 		Method string
 	}
 	RequestOption func(*http.Request)
+	KnownHeader   string
 )
 
 const (
@@ -48,6 +54,8 @@ const (
 	RESPONSE Level = 4
 	CONNECT  Level = 8
 	PARALLEL Level = 16
+
+	HEADER_CONTINUE_ON_ERROR KnownHeader = "x-continue-on-error"
 )
 
 func cloneURL(u *url.URL) *url.URL {
@@ -151,4 +159,62 @@ func (filter *FilterBase) MoveTo(res *http.Response, req *http.Request) error {
 		req.Body = res.Body
 	}
 	return nil
+}
+
+func HandleFilter(r *http.Request, filters []Filter, level Level) error {
+	for _, filter := range filters {
+		if !filter.Is(level) {
+			continue
+		}
+		if !filter.Is(PARALLEL) {
+			err := HandlerFunc(filter, r)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		go HandlerFunc(filter, r)
+	}
+	return nil
+}
+
+func HandlerFunc(filter Filter, r *http.Request) error {
+	res, err := filter.Handle(r)
+	if err != nil {
+		return common.NewHandlerError(common.HANDLER_ERROR_INTERNAL, 500, err.Error())
+	}
+	if res == nil {
+		return nil
+	}
+	if res.Header.Get("status") != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
+		return common.NewHandlerError(common.HANDLER_ERROR_FILTER, res.StatusCode, res.Status)
+	}
+	err = filter.MoveTo(res, r)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func HttpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
+	req, err := CloneRequest(r, WithUrl(backend), WithMethod(r.Method))
+	if err != nil {
+		log.Println("proxy failed", err)
+		return nil, err
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		log.Println("proxy failed", err)
+		return nil, err
+	}
+	if res.StatusCode%200 >= 100 && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
+		r, err := io.ReadAll(res.Body)
+		if err != nil {
+			log.Println("proxy failed", res.StatusCode, "unknown")
+			return nil, common.NewHandlerError(common.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
+		}
+		log.Println("proxy failed", res.StatusCode, string(r))
+		return nil, common.NewHandlerError(common.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
+	}
+	return res, nil
 }
