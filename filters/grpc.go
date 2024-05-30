@@ -87,5 +87,19 @@ func (filter *GRPCFilter) HandleSync(r *http.Request) (*http.Response, error) {
 			}
 		}
 	}
+	if len(filter.Filters) > 0 {
+		req, err := RequestFrom(&response, nil)
+		if err != nil {
+			return nil, err
+		}
+		err = HandleFilter(req, filter.Filters, INHERIT)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &response, nil
+}
+
+func (filter *GRPCFilter) HandleAsync(r *http.Request) {
+	go filter.HandleSync(r)
 }

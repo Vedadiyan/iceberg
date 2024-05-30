@@ -17,5 +17,23 @@ func (filter *HttpFilter) HandleSync(r *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	return http.DefaultClient.Do(req)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if len(filter.Filters) > 0 {
+		req, err := RequestFrom(res, nil)
+		if err != nil {
+			return nil, err
+		}
+		err = HandleFilter(req, filter.Filters, INHERIT)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (filter *HttpFilter) HandleAsync(r *http.Request) {
+	go filter.HandleSync(r)
 }
