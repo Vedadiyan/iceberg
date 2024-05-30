@@ -2,11 +2,11 @@ package filters
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/vedadiyan/goal/pkg/di"
+	"github.com/vedadiyan/iceberg/internal/logger"
 	"github.com/vedadiyan/natsch"
 )
 
@@ -23,12 +23,12 @@ type (
 func (filter *NATSCHFilter) Handle(r *http.Request) (*http.Response, error) {
 	conn, err := di.ResolveWithName[natsch.Conn](filter.Url, nil)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err, "")
 		return nil, err
 	}
 	msg, err := GetMsg(r, filter.Subject)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err, "")
 		return nil, err
 	}
 	natschMsg := natsch.WrapMessage(msg)
@@ -36,7 +36,7 @@ func (filter *NATSCHFilter) Handle(r *http.Request) (*http.Response, error) {
 	msg.Reply = fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject)
 	err = conn.PublishMsgSch(natschMsg)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err, "")
 		return nil, err
 	}
 	return nil, nil
@@ -49,29 +49,29 @@ func (filter *NATSCHFilter) HandleSync(r *http.Request) (*http.Response, error) 
 func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
 	_, err := filter.Handle(r)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err, "")
 	}
 }
 
 func (filter *NATSCHFilter) InitAsyncHandler() error {
 	conn, err := di.ResolveWithName[natsch.Conn](filter.Url, nil)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err, "")
 		return err
 	}
 	_, err = conn.QueueSubscribeSch(fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject), "balanced", func(msg *natsch.Msg) {
 		req, err := RequestFrom(MsgToResponse(msg.Msg))
 		if err != nil {
-			log.Println(err)
+			logger.Error(err, "")
 			return
 		}
 		err = HandleFilter(req, filter.Filters, INHERIT)
 		if err != nil {
-			log.Println(err)
+			logger.Error(err, "")
 		}
 	})
 	if err != nil {
-		log.Println(err)
+		logger.Error(err, "")
 		return err
 	}
 	return nil

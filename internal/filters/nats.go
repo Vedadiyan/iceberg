@@ -1,12 +1,12 @@
 package filters
 
 import (
-	"log"
 	"net/http"
 	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/vedadiyan/goal/pkg/di"
+	"github.com/vedadiyan/iceberg/internal/logger"
 )
 
 type (
@@ -46,32 +46,32 @@ func (filter *NATSFilter) HandleSync(r *http.Request) (*http.Response, error) {
 func (filter *NATSFilter) HandleAsync(r *http.Request) {
 	msg, err := GetMsg(r, filter.Subject)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err, "")
 	}
 	conn, err := di.ResolveWithName[nats.Conn](filter.Url, nil)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err, "")
 	}
 	if len(filter.Filters) > 0 {
 		msg.Reply = conn.NewRespInbox()
 		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
 			req, err := RequestFrom(MsgToResponse(msg))
 			if err != nil {
-				log.Println(err)
+				logger.Error(err, "")
 				return
 			}
 			err = HandleFilter(req, filter.Filters, INHERIT)
 			if err != nil {
-				log.Println(err)
+				logger.Error(err, "")
 			}
 		})
 		if err != nil {
-			log.Println(err)
+			logger.Error(err, "")
 		}
 		unsubscriber.AutoUnsubscribe(1)
 	}
 	err = conn.PublishMsg(msg)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err, "")
 	}
 }

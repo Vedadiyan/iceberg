@@ -2,7 +2,6 @@ package parsers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/vedadiyan/goal/pkg/di"
 	"github.com/vedadiyan/iceberg/internal/common"
 	"github.com/vedadiyan/iceberg/internal/filters"
+	"github.com/vedadiyan/iceberg/internal/logger"
 	"github.com/vedadiyan/natsch"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
@@ -224,7 +224,7 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
 						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
 						auto.Register(auto.New(url.Host, false, func(value string) {
-							log.Println("nats:", value)
+							logger.Info("nats", value)
 							_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
 								return nats.Connect(value)
 							})
@@ -265,7 +265,7 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler
 					if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
 						url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
 						auto.Register(auto.New(url.Host, false, func(value string) {
-							log.Println("natsch:", value)
+							logger.Info("natsch", value)
 							_ = di.AddSinletonWithName(url.Host, func() (instance *natsch.Conn, err error) {
 								conn, err := nats.Connect(value)
 								if err != nil {
@@ -316,10 +316,10 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler
 				}
 			}
 		}
-		log.Println("config parsed")
+		logger.Info("config parsed")
 		conf.Filters = filterList
 		handler := handlerFunc(&conf)
-		log.Println(conf)
+		logger.Info("config", conf)
 		handler(mux)
 	}
 	return func() error {

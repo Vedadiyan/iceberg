@@ -9,6 +9,7 @@ import (
 
 	"github.com/vedadiyan/iceberg/internal/common"
 	"github.com/vedadiyan/iceberg/internal/filters"
+	"github.com/vedadiyan/iceberg/internal/logger"
 )
 
 func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
@@ -16,11 +17,11 @@ func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("handling request", r.URL.String(), r.Method)
-	log.Println("handling request filters")
+	logger.Info("handling request", r.URL.String(), r.Method)
+	logger.Info("handling request filters")
 	err := filters.HandleFilter(r, conf.Filters, filters.REQUEST)
 	if err != nil {
-		log.Println("request filter failed", err)
+		logger.Error(err, "request filter failed")
 		if handlerError, ok := err.(common.HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
 			w.Write([]byte(handlerError.Message))
@@ -29,11 +30,11 @@ func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(418)
 		return
 	}
-	log.Println("handling proxy")
+	logger.Info("handling proxy")
 	url := *r.URL
 	r, err = filters.RequestFrom(httpProxy(r, conf.Backend))
 	if err != nil {
-		log.Println(err)
+		logger.Error(err, "")
 		w.WriteHeader(502)
 		return
 	}
@@ -41,7 +42,7 @@ func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
 	log.Println("handling response filters")
 	err = filters.HandleFilter(r, conf.Filters, filters.RESPONSE)
 	if err != nil {
-		log.Println("response filter failed", err)
+		logger.Error(err, "response filter failed")
 		if handlerError, ok := err.(common.HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
 			w.Write([]byte(handlerError.Message))
@@ -66,21 +67,21 @@ func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
 func httpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 	req, err := filters.CloneRequest(r, filters.WithUrl(backend), filters.WithMethod(r.Method))
 	if err != nil {
-		log.Println("proxy failed", err)
+		logger.Error(err, "proxy failed")
 		return nil, err
 	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Println("proxy failed", err)
+		logger.Error(err, "proxy failed")
 		return nil, err
 	}
 	if res.StatusCode%200 >= 100 && strings.ToLower(res.Header.Get(string(filters.HEADER_CONTINUE_ON_ERROR))) != "true" {
 		r, err := io.ReadAll(res.Body)
 		if err != nil {
-			log.Println("proxy failed", res.StatusCode, "unknown")
+			logger.Error(err, "proxy failed", res.StatusCode, "unknown")
 			return nil, common.NewHandlerError(common.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
 		}
-		log.Println("proxy failed", res.StatusCode, string(r))
+		logger.Error(err, "proxy failed", res.StatusCode, string(r))
 		return nil, common.NewHandlerError(common.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
 	}
 	return res, nil
