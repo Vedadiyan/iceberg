@@ -108,8 +108,8 @@ func (filter *NATSCHFilter) AddDurableSubscription() {
 		return
 	}
 	_, err = conn.QueueSubscribeSch(fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject), "balanced", func(msg *natsch.Msg) {
-		reply := msg.Header.Get("reply")
-		msg.Reply = reply
+		msg.Subject = msg.Reply
+		msg.Reply = ""
 		err := conn.Conn.PublishMsg(msg.Msg)
 		if err != nil {
 			logger.Error(err, "")
