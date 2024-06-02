@@ -71,6 +71,14 @@ const (
 	VER_V1
 )
 
+var (
+	_initializers []func() error
+)
+
+func init() {
+	_initializers = make([]func() error, 0)
+}
+
 func Parse() (ApiVersion, any, error) {
 	data := os.Getenv("ICEBERG_CONFIG")
 	if len(data) == 0 {
@@ -207,6 +215,12 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler
 		handler(mux)
 	}
 	return func() error {
+		for _, initializer := range _initializers {
+			err := initializer()
+			if err != nil {
+				return err
+			}
+		}
 		return http.ListenAndServe(specV1.Spec.Listen, mux)
 	}, nil
 }
@@ -380,10 +394,9 @@ func BuildNatsCh(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 	natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
 	natsFilter.Filters = callbacks
 	natsFilter.AwaitList = filter.Await
-	err = natsFilter.AddDurableSubscription()
-	if err != nil {
-		return nil, err
-	}
+	_initializers = append(_initializers, func() error {
+		return natsFilter.AddDurableSubscription()
+	})
 	return &natsFilter, nil
 }
 

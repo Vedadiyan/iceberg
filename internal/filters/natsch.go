@@ -57,11 +57,11 @@ func (filter *NATSCHFilter) HandleSync(r *http.Request) (*http.Response, error) 
 	}
 	natschMsg := natsch.WrapMessage(msg)
 	natschMsg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
-	msg.Reply = fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject)
-	msg.Header.Add("reply", conn.NewRespInbox())
 	var wg sync.WaitGroup
 	var res *nats.Msg
 	if len(filter.Filters) > 0 {
+		msg.Header.Add("subject", fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject))
+		msg.Header.Add("reply", conn.NewRespInbox())
 		wg.Add(1)
 		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
 			res = msg
@@ -102,14 +102,14 @@ func (filter *NATSCHFilter) HandleAsync(r *http.Request) {
 	key := fmt.Sprintf("%s_%s", filter.Name, r.Header.Get("x-request-id"))
 	natschMsg := natsch.WrapMessage(msg)
 	natschMsg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
-	msg.Reply = fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject)
-	msg.Header.Add("reply", conn.NewRespInbox())
-	_, err = stateManager.Create(key, []byte("false"))
-	if err != nil {
-		logger.Error(err, "")
-		return
-	}
 	if len(filter.Filters) > 0 {
+		msg.Header.Add("subject", fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject))
+		msg.Header.Add("reply", conn.NewRespInbox())
+		_, err = stateManager.Create(key, []byte("false"))
+		if err != nil {
+			logger.Error(err, "")
+			return
+		}
 		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
 			_, err = stateManager.Put(key, []byte("true"))
 			if err != nil {
@@ -136,7 +136,7 @@ func (filter *NATSCHFilter) AddDurableSubscription() error {
 		return err
 	}
 	_, err = conn.QueueSubscribeSch(fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject), "balanced", func(msg *natsch.Msg) {
-		msg.Subject = msg.Reply
+		msg.Subject = msg.Header.Get("reply")
 		msg.Reply = ""
 		err := conn.Conn.PublishMsg(msg.Msg)
 		if err != nil {

@@ -14,7 +14,8 @@ type (
 )
 
 func init() {
-	config, err := os.ReadFile("sample.yml")
+	os.Setenv("default_nats", "nats://127.0.0.1:4222")
+	config, err := os.ReadFile("./../sample.yml")
 	if err != nil {
 		log.Fatalln(err)
 	}

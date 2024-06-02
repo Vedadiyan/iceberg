@@ -14,14 +14,14 @@ spec:
       backend: http://127.0.0.1:8080
       filterChains: 
         - name: payment-intent
-          listener: "natsch:10000://[[default-nats]]/internal.middleware.verify-payment"
+          listener: "natsch:1://[[default_nats]]/tests.a"
           level: "request"
           timeout: 30
           exchange: 
             headers: 
               - x-payment-token
-          callbacks: 
-            - name: generate-receipt
-              listener: "natsch:10000://[[default-nats]]/internal.middleware.receipt"
-              parallel: true
-              timeout: 30
+          # callbacks: 
+          #   - name: generate-receipt
+          #     listener: "natsch:10000://[[default-nats]]/internal.middleware.receipt"
+          #     parallel: true
+          #     timeout: 30

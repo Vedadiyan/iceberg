@@ -36,6 +36,9 @@ func GetMsg(r *http.Request, subject string) (*nats.Msg, error) {
 }
 
 func MsgToResponse(msg *nats.Msg) (*http.Response, error) {
+	if msg == nil {
+		return nil, nil
+	}
 	response := http.Response{}
 	response.Header = http.Header{}
 	response.Body = io.NopCloser(bytes.NewBuffer(msg.Data))
