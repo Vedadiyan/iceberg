@@ -20,8 +20,12 @@ spec:
           exchange: 
             headers: 
               - x-payment-token
-          # callbacks: 
-          #   - name: generate-receipt
-          #     listener: "natsch:10000://[[default-nats]]/internal.middleware.receipt"
-          #     parallel: true
-          #     timeout: 30
+          callbacks: 
+            - name: generate-receipt
+              listener: "natsch:10://[[default_nats]]/tests.b"
+              parallel: false
+              timeout: 30
+            - name: generate-receipt-2
+              listener: "natsch:1://[[default_nats]]/tests.c"
+              parallel: false
+              timeout: 30

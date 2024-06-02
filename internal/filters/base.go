@@ -174,7 +174,7 @@ func HandleFilter(r *http.Request, filters []Filter, level Level) error {
 			if err != nil {
 				return err
 			}
-			return nil
+			continue
 		}
 		filter.HandleAsync(r)
 	}

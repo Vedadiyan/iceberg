@@ -44,6 +44,7 @@ func (filter *NATSCHFilter) Handle(r *http.Request) (*http.Response, error) {
 }
 
 func (filter *NATSCHFilter) HandleSync(r *http.Request) (*http.Response, error) {
+	logger.Info("filter for", filter.Subject)
 	conn, err := di.ResolveWithName[natsch.Conn](filter.Url, nil)
 	if err != nil {
 		logger.Error(err, "")
@@ -59,26 +60,28 @@ func (filter *NATSCHFilter) HandleSync(r *http.Request) (*http.Response, error) 
 	natschMsg.Deadline = time.Now().Add(time.Second * time.Duration(filter.Deadline)).UnixMicro()
 	var wg sync.WaitGroup
 	var res *nats.Msg
-	if len(filter.Filters) > 0 {
-		msg.Header.Add("subject", fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject))
-		msg.Header.Add("reply", conn.NewRespInbox())
-		wg.Add(1)
-		unsubscriber, err := conn.Subscribe(msg.Reply, func(msg *nats.Msg) {
-			res = msg
-			wg.Done()
-		})
-		if err != nil {
-			logger.Error(err, "")
-			return nil, err
-		}
-		unsubscriber.AutoUnsubscribe(1)
+	msg.Header.Add("subject", fmt.Sprintf("ICEBERGREPLY.%s", filter.Subject))
+	reply := conn.NewRespInbox()
+	msg.Header.Add("reply", reply)
+	wg.Add(1)
+	unsubscriber, err := conn.Subscribe(reply, func(msg *nats.Msg) {
+		res = msg
+		logger.Info("response", string(res.Data))
+		wg.Done()
+	})
+	if err != nil {
+		logger.Error(err, "")
+		return nil, err
 	}
+	unsubscriber.AutoUnsubscribe(1)
 	err = conn.PublishMsgSch(natschMsg)
 	if err != nil {
 		logger.Error(err, "")
 		return nil, err
 	}
+	logger.Info("awaiting", natschMsg.Subject)
 	wg.Wait()
+	logger.Info("done awaiting", natschMsg.Subject)
 	return MsgToResponse(res)
 }
 
