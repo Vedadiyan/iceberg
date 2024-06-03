@@ -26,6 +26,15 @@ type (
 	}
 )
 
+var (
+	_reflectors map[*nats.Conn]bool
+	_mutRw      sync.RWMutex
+)
+
+func init() {
+	_reflectors = make(map[*nats.Conn]bool)
+}
+
 func (filter *NATSFilter) GetQueue() *natsqueue.Queue {
 	filter.queueInitializer.Do(func() {
 		conn, err := di.ResolveWithName[nats.Conn](filter.Url, nil)
@@ -110,7 +119,9 @@ func (filter *NATSFilter) BaseHandler(r *http.Request, handler func(*nats.Msg) e
 		return nil, err
 	}
 
-	msg.Reply = queue.Conn().NewRespInbox()
+	reply := queue.Conn().NewRespInbox()
+	msg.Header.Add("reply", reply)
+	msg.Reply = "$ICEBERG_REFLECTOR"
 
 	wg.Add(1)
 
@@ -198,4 +209,33 @@ func (filter *NATSFilter) HandleAsync(r *http.Request) {
 		return
 	}
 	filter.HandleSimpleAsync(r)
+}
+
+func (filter *NATSFilter) InitializeReflector() error {
+	conn := filter.GetConn()
+	_mutRw.RLocker()
+	if _, ok := _reflectors[conn]; ok {
+		_mutRw.RUnlock()
+		return nil
+	}
+	_mutRw.RUnlock()
+	_mutRw.Lock()
+	defer _mutRw.Unlock()
+	_reflectors[conn] = true
+	if filter.Durable {
+		queue, err := natsqueue.New(filter.GetConn(), []string{"$ICEBERG_REFLECTOR"}, "ICEBERGREFLECTOR")
+		if err != nil {
+			return err
+		}
+		_, err = queue.Pull("$ICEBERG_REFLECTOR", func(m *nats.Msg) error {
+			m.Subject = m.Header.Get("reply")
+			return filter.GetConn().PublishMsg(m)
+		})
+		return err
+	}
+	_, err := filter.GetConn().Subscribe("$ICEBERG_REFLECTOR", func(m *nats.Msg) {
+		m.Subject = m.Header.Get("reply")
+		filter.GetConn().PublishMsg(m)
+	})
+	return err
 }
