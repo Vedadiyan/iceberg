@@ -27,7 +27,7 @@ type (
 )
 
 var (
-	_reflectors map[*nats.Conn]bool
+	_reflectors map[string]bool
 	_mutRw      sync.RWMutex
 )
 
@@ -37,7 +37,7 @@ const (
 )
 
 func init() {
-	_reflectors = make(map[*nats.Conn]bool)
+	_reflectors = make(map[string]bool)
 }
 
 func (filter *NATSFilter) GetQueue() *natsqueue.Queue {
@@ -218,15 +218,16 @@ func (filter *NATSFilter) HandleAsync(r *http.Request) {
 
 func (filter *NATSFilter) InitializeReflector() error {
 	conn := filter.GetConn()
+	key := fmt.Sprintf("%s:%v", conn.Opts.Url, filter.Durable)
 	_mutRw.RLocker()
-	if _, ok := _reflectors[conn]; ok {
+	if _, ok := _reflectors[key]; ok {
 		_mutRw.RUnlock()
 		return nil
 	}
 	_mutRw.RUnlock()
 	_mutRw.Lock()
 	defer _mutRw.Unlock()
-	_reflectors[conn] = true
+	_reflectors[key] = true
 	if filter.Durable {
 		queue, err := natsqueue.New(filter.GetConn(), []string{REFLECTOR_NAMESPACE}, REFLECTOR_STREAM_NAME)
 		if err != nil {
