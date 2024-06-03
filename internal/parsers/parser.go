@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/nats-io/nats.go"
@@ -14,7 +13,6 @@ import (
 	"github.com/vedadiyan/iceberg/internal/common"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/logger"
-	"github.com/vedadiyan/natsch"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
 )
@@ -50,6 +48,7 @@ type (
 		Headers   map[string]any `yaml:"headers"`
 		Timeout   int            `yaml:"timeout"`
 		Await     []string       `yaml:"await"`
+		Durable   bool           `yaml:"durable"`
 	}
 	CallbackV1 struct {
 		Name      string       `yaml:"name"`
@@ -57,6 +56,7 @@ type (
 		Parallel  bool         `yaml:"parallel"`
 		Method    string       `yaml:"method"`
 		Timeout   int          `yaml:"timeout"`
+		Durable   bool         `yaml:"durable"`
 		Callbacks []CallbackV1 `yaml:"callbacks"`
 	}
 	ExchangeV1 struct {
@@ -251,10 +251,6 @@ func BuildFilterChainV1(filter FilterChainV1) (filters.Filter, error) {
 		{
 			return BuildNats(filter, url)
 		}
-	case "natsch":
-		{
-			return BuildNatsCh(filter, url)
-		}
 	case "grpc":
 		{
 			return BuildGrpc(filter, url)
@@ -275,6 +271,7 @@ func BuildCallbacksV1(callbacks []CallbackV1) ([]filters.Filter, error) {
 			Listerner: filter.Listerner,
 			Method:    filter.Method,
 			Level:     level,
+			Durable:   filter.Durable,
 			Callbacks: filter.Callbacks,
 		})
 		if err != nil {
@@ -340,63 +337,7 @@ func BuildNats(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 	natsFilter.Filters = callbacks
 	natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
 	natsFilter.AwaitList = filter.Await
-	return &natsFilter, nil
-}
-
-func BuildNatsCh(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
-	callbacks, err := BuildCallbacksV1(filter.Callbacks)
-	if err != nil {
-		return nil, err
-	}
-	level := Levels(filter.Level)
-	var delay int
-	if len(url.Opaque) > 0 {
-		segments := strings.Split(url.Opaque, "://")
-		if len(segments) != 2 {
-			return nil, fmt.Errorf("invalid natsch scheme")
-		}
-		value, err := strconv.ParseInt(segments[0], 10, 32)
-		if err != nil {
-			return nil, err
-		}
-		delay = int(value)
-		url, err = url.Parse(fmt.Sprintf("natsch://%s", segments[1]))
-		if err != nil {
-			return nil, err
-		}
-	}
-	if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
-		url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
-		auto.Register(auto.New(url.Host, false, func(value string) {
-			logger.Info("natsch", value)
-			_ = di.AddSinletonWithName(url.Host, func() (instance *natsch.Conn, err error) {
-				conn, err := nats.Connect(value)
-				if err != nil {
-					return nil, err
-				}
-				return natsch.New(conn)
-			})
-		}))
-	} else {
-		_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
-			return nats.Connect(url.Host)
-		})
-	}
-	natsFilter := filters.NATSCHFilter{}
-	natsFilter.Name = filter.Name
-	natsFilter.Address = url
-	natsFilter.ExchangeHeaders = filter.Exchange.Headers
-	natsFilter.ExchangeBody = filter.Exchange.Body
-	natsFilter.Level = level
-	natsFilter.Timeout = filter.Timeout
-	natsFilter.Url = url.Host
-	natsFilter.Deadline = delay
-	natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
-	natsFilter.Filters = callbacks
-	natsFilter.AwaitList = filter.Await
-	_initializers = append(_initializers, func() error {
-		return natsFilter.AddDurableSubscription()
-	})
+	natsFilter.Durable = filter.Durable
 	return &natsFilter, nil
 }
 

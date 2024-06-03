@@ -3,6 +3,7 @@ package filters
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -67,7 +68,7 @@ func GetStateManager(conn *nats.Conn) (nats.KeyValue, error) {
 	}
 	return kv, nil
 }
-func Await(conn *nats.Conn, awaitList []string) error {
+func Await(conn *nats.Conn, awaitList []string, id string) error {
 	if len(awaitList) > 0 {
 		var wg sync.WaitGroup
 		stateManager, err := GetStateManager(conn)
@@ -76,7 +77,7 @@ func Await(conn *nats.Conn, awaitList []string) error {
 		}
 		for _, await := range awaitList {
 			wg.Add(1)
-			watcher, err := stateManager.Watch(await)
+			watcher, err := stateManager.Watch(Key(await, id))
 			if err != nil {
 				return err
 			}
@@ -92,4 +93,8 @@ func Await(conn *nats.Conn, awaitList []string) error {
 		wg.Wait()
 	}
 	return nil
+}
+
+func Key(name string, id string) string {
+	return fmt.Sprintf("%sX%s", name, id)
 }
