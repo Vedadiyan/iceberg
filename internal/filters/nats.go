@@ -118,17 +118,29 @@ func (filter *NATSFilter) BaseHandler(r *http.Request, handler func(*nats.Msg) e
 		res = msg
 		err := filter.EndHandler(id)
 		if err != nil {
-			logger.Error(err, "")
+			logger.Error(
+				err,
+				logger.NameOfFunc(filter.BaseHandler),
+				logger.NameOfFunc(filter.EndHandler),
+			)
 		}
 		wg.Done()
 		req, err := RequestFrom(MsgToResponse(msg))
 		if err != nil {
-			logger.Error(err, "")
+			logger.Error(
+				err,
+				logger.NameOfFunc(filter.BaseHandler),
+				logger.NameOfFunc(RequestFrom),
+			)
 			return
 		}
 		err = HandleFilter(req, filter.Filters, INHERIT)
 		if err != nil {
-			logger.Error(err, "")
+			logger.Error(
+				err,
+				logger.NameOfFunc(filter.BaseHandler),
+				logger.NameOfFunc(HandleFilter),
+			)
 			return
 		}
 	})
@@ -153,7 +165,7 @@ func (filter *NATSFilter) HandleQueueAsync(r *http.Request) {
 	go func() {
 		_, err := filter.HandleQueueSync(r)
 		if err != nil {
-			logger.Error(err, "")
+			logger.Error(err, logger.NameOfFunc(filter.HandleQueueAsync))
 		}
 	}()
 }
@@ -168,7 +180,7 @@ func (filter *NATSFilter) HandleSimpleAsync(r *http.Request) {
 	go func() {
 		_, err := filter.HandleSync(r)
 		if err != nil {
-			logger.Error(err, "")
+			logger.Error(err, logger.NameOfFunc(filter.HandleSimpleAsync))
 		}
 	}()
 }

@@ -1,5 +1,10 @@
 package logger
 
+import (
+	"reflect"
+	"runtime"
+)
+
 type (
 	Logger interface {
 		Error(err error, message string, params ...any)
@@ -36,4 +41,8 @@ func Error(err error, message string, params ...any) {
 	for _, logger := range _loggers {
 		logger.Error(err, message, params...)
 	}
+}
+
+func NameOfFunc(i interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
 }
