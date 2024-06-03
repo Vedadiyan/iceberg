@@ -1,13 +1,13 @@
 module github.com/vedadiyan/iceberg
 
-go 1.21.3
+go 1.20
 
 require (
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/websocket v1.5.1
 	github.com/nats-io/nats.go v1.35.0
 	github.com/vedadiyan/goal v0.2.11
-	github.com/vedadiyan/nats-helpers v0.0.0-20240603070341-08e8968b8d8a
+	github.com/vedadiyan/nats-helpers v0.0.0-20240603112112-591a7717266b
 	google.golang.org/grpc v1.61.1
 	gopkg.in/yaml.v3 v3.0.1
 )

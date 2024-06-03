@@ -17,15 +17,18 @@ spec:
           listener: "nats://[[default_nats]]/tests.a"
           level: "request"
           timeout: 30
+          durable: true
           exchange: 
             headers: 
               - x-payment-token
           callbacks: 
             - name: generate-receipt
-              listener: "natsch:10://[[default_nats]]/tests.b"
+              listener: "nats://[[default_nats]]/tests.b"
               parallel: false
+              durable: true
               timeout: 30
             - name: generate-receipt-2
-              listener: "natsch:1://[[default_nats]]/tests.c"
+              listener: "nats://[[default_nats]]/tests.c"
               parallel: false
+              durable: true
               timeout: 30

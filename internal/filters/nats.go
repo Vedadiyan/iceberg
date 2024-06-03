@@ -46,11 +46,12 @@ func (filter *NATSFilter) GetQueue() *natsqueue.Queue {
 		if err != nil {
 			panic(err)
 		}
-		queue, err := natsqueue.New(conn, []string{filter.Subject}, filter.Name)
+		queue, err := natsqueue.New(conn, []string{filter.Subject})
 		if err != nil {
 			panic(err)
 		}
 		filter.Queue = queue
+		logger.Info("created", filter.Subject)
 	})
 	return filter.Queue
 }
@@ -125,12 +126,13 @@ func (filter *NATSFilter) BaseHandler(r *http.Request, handler func(*nats.Msg) e
 	}
 
 	reply := queue.Conn().NewRespInbox()
-	msg.Header.Add("reply", reply)
-	msg.Reply = REFLECTOR_NAMESPACE
+	msg.Header.Set("Reply", reply)
 
 	wg.Add(1)
 
-	queue.Conn().Subscribe(msg.Reply, func(msg *nats.Msg) {
+	subs, err := queue.Conn().Subscribe(reply, func(msg *nats.Msg) {
+		defer wg.Done()
+		logger.Info("received", filter.Subject)
 		res = msg
 		err := filter.EndHandler(id)
 		if err != nil {
@@ -140,7 +142,6 @@ func (filter *NATSFilter) BaseHandler(r *http.Request, handler func(*nats.Msg) e
 				logger.NameOfFunc(filter.EndHandler),
 			)
 		}
-		wg.Done()
 		req, err := RequestFrom(MsgToResponse(msg))
 		if err != nil {
 			logger.Error(
@@ -159,20 +160,35 @@ func (filter *NATSFilter) BaseHandler(r *http.Request, handler func(*nats.Msg) e
 			)
 			return
 		}
-	})
 
-	err = handler(msg)
+	})
 	if err != nil {
 		return nil, err
 	}
 
+	err = subs.AutoUnsubscribe(1)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Info("pushing", filter.Subject)
+	err = handler(msg)
+	if err != nil {
+		return nil, err
+	}
+	logger.Info("pushed", filter.Subject)
 	wg.Wait()
+
+	logger.Info("done", filter.Subject)
 
 	return MsgToResponse(res)
 }
 
 func (filter *NATSFilter) HandleQueueSync(r *http.Request) (*http.Response, error) {
 	return filter.BaseHandler(r, func(m *nats.Msg) error {
+		logger.Info("SENDING", filter.Subject)
+		m.Header.Set("X-Status", m.Header.Get("Status"))
+		m.Header.Del("Status")
 		return filter.GetQueue().PushMsg(m)
 	})
 }
@@ -188,6 +204,8 @@ func (filter *NATSFilter) HandleQueueAsync(r *http.Request) {
 
 func (filter *NATSFilter) HandleSimpleSync(r *http.Request) (*http.Response, error) {
 	return filter.BaseHandler(r, func(m *nats.Msg) error {
+		m.Header.Set("X-Status", m.Header.Get("Status"))
+		m.Header.Del("Status")
 		return filter.GetConn().PublishMsg(m)
 	})
 }
@@ -219,7 +237,7 @@ func (filter *NATSFilter) HandleAsync(r *http.Request) {
 func (filter *NATSFilter) InitializeReflector() error {
 	conn := filter.GetConn()
 	key := fmt.Sprintf("%s:%v", conn.Opts.Url, filter.Durable)
-	_mutRw.RLocker()
+	_mutRw.RLock()
 	if _, ok := _reflectors[key]; ok {
 		_mutRw.RUnlock()
 		return nil
@@ -229,18 +247,19 @@ func (filter *NATSFilter) InitializeReflector() error {
 	defer _mutRw.Unlock()
 	_reflectors[key] = true
 	if filter.Durable {
-		queue, err := natsqueue.New(filter.GetConn(), []string{REFLECTOR_NAMESPACE}, REFLECTOR_STREAM_NAME)
+		queue, err := natsqueue.New(filter.GetConn(), []string{REFLECTOR_NAMESPACE})
 		if err != nil {
 			return err
 		}
 		_, err = queue.Pull(REFLECTOR_NAMESPACE, func(m *nats.Msg) error {
-			m.Subject = m.Header.Get("reply")
+			m.Subject = m.Header.Get("Reply")
+			m.Reply = ""
 			return filter.GetConn().PublishMsg(m)
 		})
 		return err
 	}
 	_, err := filter.GetConn().Subscribe(REFLECTOR_NAMESPACE, func(m *nats.Msg) {
-		m.Subject = m.Header.Get("reply")
+		m.Subject = m.Header.Get("Reply")
 		filter.GetConn().PublishMsg(m)
 	})
 	return err
