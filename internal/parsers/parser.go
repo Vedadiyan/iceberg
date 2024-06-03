@@ -338,6 +338,7 @@ func BuildNats(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 	natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
 	natsFilter.AwaitList = filter.Await
 	natsFilter.Durable = filter.Durable
+	_initializers = append(_initializers, natsFilter.InitializeReflector)
 	return &natsFilter, nil
 }
 
