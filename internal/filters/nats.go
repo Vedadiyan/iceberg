@@ -162,7 +162,7 @@ func (filter *NATSFilter) BaseHandler(r *http.Request, handler func(*nats.Msg) e
 	return MsgToResponse(res)
 }
 
-func (filter *NATSFilter) HandleQueueSync(r *http.Request) (*http.Response, error) {
+func (filter *NATSFilter) HandleDurableSync(r *http.Request) (*http.Response, error) {
 	return filter.BaseHandler(r, func(m *nats.Msg) error {
 		logger.Info("SENDING", filter.Subject)
 		m.Header.Set("X-Status", m.Header.Get("Status"))
@@ -171,11 +171,11 @@ func (filter *NATSFilter) HandleQueueSync(r *http.Request) (*http.Response, erro
 	})
 }
 
-func (filter *NATSFilter) HandleQueueAsync(r *http.Request) {
+func (filter *NATSFilter) HandleDurableAsync(r *http.Request) {
 	go func() {
-		_, err := filter.HandleQueueSync(r)
+		_, err := filter.HandleDurableSync(r)
 		if err != nil {
-			logger.Error(err, logger.NameOfFunc(filter.HandleQueueAsync))
+			logger.Error(err, logger.NameOfFunc(filter.HandleDurableAsync))
 		}
 	}()
 }
@@ -199,21 +199,20 @@ func (filter *NATSFilter) HandleSimpleAsync(r *http.Request) {
 
 func (filter *NATSFilter) HandleSync(r *http.Request) (*http.Response, error) {
 	if filter.Durable {
-		return filter.HandleQueueSync(r)
+		return filter.HandleDurableSync(r)
 	}
 	return filter.HandleSimpleSync(r)
 }
 
 func (filter *NATSFilter) HandleAsync(r *http.Request) {
 	if filter.Durable {
-		filter.HandleQueueAsync(r)
+		filter.HandleDurableAsync(r)
 		return
 	}
 	filter.HandleSimpleAsync(r)
 }
 
 func (filter *NATSFilter) InitializeReflector() error {
-	conn := filter.GetConn()
 	_mutRw.RLock()
 	if _, ok := _reflectors[filter.ReflectionKey]; ok {
 		_mutRw.RUnlock()
@@ -224,36 +223,46 @@ func (filter *NATSFilter) InitializeReflector() error {
 	defer _mutRw.Unlock()
 	_reflectors[filter.ReflectionKey] = true
 	if filter.Durable {
-		queue, err := natsqueue.New(conn, []string{filter.ReflectionKey})
+		return filter.DurableReflector()
+	}
+	return filter.SimpleReflector()
+}
+
+func (filter *NATSFilter) DurableReflector() error {
+	conn := filter.GetConn()
+	queue, err := natsqueue.New(conn, []string{filter.ReflectionKey})
+	if err != nil {
+		return err
+	}
+	_, err = queue.Pull(filter.ReflectionKey, func(m *nats.Msg) error {
+		m.Subject = m.Header.Get("Reply")
+		m.Reply = ""
+		err := conn.PublishMsg(m)
 		if err != nil {
 			return err
 		}
-		_, err = queue.Pull(filter.ReflectionKey, func(m *nats.Msg) error {
-			m.Subject = m.Header.Get("Reply")
-			m.Reply = ""
-			err := conn.PublishMsg(m)
-			if err != nil {
-				return err
-			}
-			req, err := RequestFrom(MsgToResponse(m))
-			if err != nil {
-				return err
-			}
-			err = HandleFilter(req, filter.Filters, INHERIT)
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-		return err
-	}
+		req, err := RequestFrom(MsgToResponse(m))
+		if err != nil {
+			return err
+		}
+		err = HandleFilter(req, filter.Filters, INHERIT)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	return err
+}
+
+func (filter *NATSFilter) SimpleReflector() error {
+	conn := filter.GetConn()
 	_, err := conn.Subscribe(filter.ReflectionKey, func(m *nats.Msg) {
 		m.Subject = m.Header.Get("Reply")
 		err := conn.PublishMsg(m)
 		if err != nil {
 			logger.Error(
 				err,
-				logger.NameOfFunc(filter.InitializeReflector),
+				logger.NameOfFunc(filter.SimpleReflector),
 				logger.NameOfFunc(conn.PublishMsg),
 			)
 			return
@@ -262,7 +271,7 @@ func (filter *NATSFilter) InitializeReflector() error {
 		if err != nil {
 			logger.Error(
 				err,
-				logger.NameOfFunc(filter.InitializeReflector),
+				logger.NameOfFunc(filter.SimpleReflector),
 				logger.NameOfFunc(RequestFrom),
 			)
 			return
@@ -271,7 +280,7 @@ func (filter *NATSFilter) InitializeReflector() error {
 		if err != nil {
 			logger.Error(
 				err,
-				logger.NameOfFunc(filter.InitializeReflector),
+				logger.NameOfFunc(filter.SimpleReflector),
 				logger.NameOfFunc(HandleFilter),
 			)
 			return
