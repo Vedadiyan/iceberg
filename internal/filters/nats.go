@@ -214,25 +214,24 @@ func (filter *NATSFilter) HandleAsync(r *http.Request) {
 
 func (filter *NATSFilter) InitializeReflector() error {
 	conn := filter.GetConn()
-	key := fmt.Sprintf("%s:%v", conn.Opts.Url, filter.Durable)
 	_mutRw.RLock()
-	if _, ok := _reflectors[key]; ok {
+	if _, ok := _reflectors[filter.ReflectionKey]; ok {
 		_mutRw.RUnlock()
 		return nil
 	}
 	_mutRw.RUnlock()
 	_mutRw.Lock()
 	defer _mutRw.Unlock()
-	_reflectors[key] = true
+	_reflectors[filter.ReflectionKey] = true
 	if filter.Durable {
-		queue, err := natsqueue.New(filter.GetConn(), []string{filter.ReflectionKey})
+		queue, err := natsqueue.New(conn, []string{filter.ReflectionKey})
 		if err != nil {
 			return err
 		}
 		_, err = queue.Pull(filter.ReflectionKey, func(m *nats.Msg) error {
 			m.Subject = m.Header.Get("Reply")
 			m.Reply = ""
-			err := filter.GetConn().PublishMsg(m)
+			err := conn.PublishMsg(m)
 			if err != nil {
 				return err
 			}
@@ -248,14 +247,14 @@ func (filter *NATSFilter) InitializeReflector() error {
 		})
 		return err
 	}
-	_, err := filter.GetConn().Subscribe(filter.ReflectionKey, func(m *nats.Msg) {
+	_, err := conn.Subscribe(filter.ReflectionKey, func(m *nats.Msg) {
 		m.Subject = m.Header.Get("Reply")
-		err := filter.GetConn().PublishMsg(m)
+		err := conn.PublishMsg(m)
 		if err != nil {
 			logger.Error(
 				err,
 				logger.NameOfFunc(filter.InitializeReflector),
-				logger.NameOfFunc(filter.GetConn().PublishMsg),
+				logger.NameOfFunc(conn.PublishMsg),
 			)
 			return
 		}
