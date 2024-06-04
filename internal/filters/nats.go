@@ -235,13 +235,14 @@ func (filter *NATSFilter) DurableReflector() error {
 		return err
 	}
 	_, err = queue.Pull(filter.ReflectionKey, func(m *nats.Msg) error {
-		m.Subject = m.Header.Get("Reply")
-		m.Reply = ""
-		err := conn.PublishMsg(m)
+		msg := *m
+		msg.Subject = msg.Header.Get("Reply")
+		msg.Reply = ""
+		err := conn.PublishMsg(&msg)
 		if err != nil {
 			return err
 		}
-		req, err := RequestFrom(MsgToResponse(m))
+		req, err := RequestFrom(MsgToResponse(&msg))
 		if err != nil {
 			return err
 		}
@@ -257,8 +258,9 @@ func (filter *NATSFilter) DurableReflector() error {
 func (filter *NATSFilter) SimpleReflector() error {
 	conn := filter.GetConn()
 	_, err := conn.Subscribe(filter.ReflectionKey, func(m *nats.Msg) {
-		m.Subject = m.Header.Get("Reply")
-		err := conn.PublishMsg(m)
+		msg := *m
+		msg.Subject = msg.Header.Get("Reply")
+		err := conn.PublishMsg(&msg)
 		if err != nil {
 			logger.Error(
 				err,
@@ -267,7 +269,7 @@ func (filter *NATSFilter) SimpleReflector() error {
 			)
 			return
 		}
-		req, err := RequestFrom(MsgToResponse(m))
+		req, err := RequestFrom(MsgToResponse(&msg))
 		if err != nil {
 			logger.Error(
 				err,
