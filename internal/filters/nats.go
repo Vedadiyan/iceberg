@@ -23,17 +23,13 @@ type (
 		conn                    *nats.Conn
 		connInitializer         sync.Once
 		Durable                 bool
+		ReflectionKey           string
 	}
 )
 
 var (
 	_reflectors map[string]bool
 	_mutRw      sync.RWMutex
-)
-
-const (
-	REFLECTOR_NAMESPACE   = "$ICEBERG_REFLECTOR"
-	REFLECTOR_STREAM_NAME = "ICEBERGREFLECTOR"
 )
 
 func init() {
@@ -127,6 +123,7 @@ func (filter *NATSFilter) BaseHandler(r *http.Request, handler func(*nats.Msg) e
 
 	reply := queue.Conn().NewRespInbox()
 	msg.Header.Set("Reply", reply)
+	msg.Reply = filter.ReflectionKey
 
 	wg.Add(1)
 
@@ -142,25 +139,6 @@ func (filter *NATSFilter) BaseHandler(r *http.Request, handler func(*nats.Msg) e
 				logger.NameOfFunc(filter.EndHandler),
 			)
 		}
-		req, err := RequestFrom(MsgToResponse(msg))
-		if err != nil {
-			logger.Error(
-				err,
-				logger.NameOfFunc(filter.BaseHandler),
-				logger.NameOfFunc(RequestFrom),
-			)
-			return
-		}
-		err = HandleFilter(req, filter.Filters, INHERIT)
-		if err != nil {
-			logger.Error(
-				err,
-				logger.NameOfFunc(filter.BaseHandler),
-				logger.NameOfFunc(HandleFilter),
-			)
-			return
-		}
-
 	})
 	if err != nil {
 		return nil, err
@@ -247,20 +225,58 @@ func (filter *NATSFilter) InitializeReflector() error {
 	defer _mutRw.Unlock()
 	_reflectors[key] = true
 	if filter.Durable {
-		queue, err := natsqueue.New(filter.GetConn(), []string{REFLECTOR_NAMESPACE})
+		queue, err := natsqueue.New(filter.GetConn(), []string{filter.ReflectionKey})
 		if err != nil {
 			return err
 		}
-		_, err = queue.Pull(REFLECTOR_NAMESPACE, func(m *nats.Msg) error {
+		_, err = queue.Pull(filter.ReflectionKey, func(m *nats.Msg) error {
 			m.Subject = m.Header.Get("Reply")
 			m.Reply = ""
-			return filter.GetConn().PublishMsg(m)
+			err := filter.GetConn().PublishMsg(m)
+			if err != nil {
+				return err
+			}
+			req, err := RequestFrom(MsgToResponse(m))
+			if err != nil {
+				return err
+			}
+			err = HandleFilter(req, filter.Filters, INHERIT)
+			if err != nil {
+				return err
+			}
+			return nil
 		})
 		return err
 	}
-	_, err := filter.GetConn().Subscribe(REFLECTOR_NAMESPACE, func(m *nats.Msg) {
+	_, err := filter.GetConn().Subscribe(filter.ReflectionKey, func(m *nats.Msg) {
 		m.Subject = m.Header.Get("Reply")
-		filter.GetConn().PublishMsg(m)
+		err := filter.GetConn().PublishMsg(m)
+		if err != nil {
+			logger.Error(
+				err,
+				logger.NameOfFunc(filter.InitializeReflector),
+				logger.NameOfFunc(filter.GetConn().PublishMsg),
+			)
+			return
+		}
+		req, err := RequestFrom(MsgToResponse(m))
+		if err != nil {
+			logger.Error(
+				err,
+				logger.NameOfFunc(filter.InitializeReflector),
+				logger.NameOfFunc(RequestFrom),
+			)
+			return
+		}
+		err = HandleFilter(req, filter.Filters, INHERIT)
+		if err != nil {
+			logger.Error(
+				err,
+				logger.NameOfFunc(filter.InitializeReflector),
+				logger.NameOfFunc(HandleFilter),
+			)
+			return
+		}
 	})
 	return err
 }

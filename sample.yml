@@ -1,5 +1,6 @@
 apiVersion: iceberg/v1
 spec:
+  appName: ok
   listen: ":8081"
   configs:
     cors: 

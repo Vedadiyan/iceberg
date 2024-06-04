@@ -24,6 +24,7 @@ type (
 	}
 	SpecV1 struct {
 		Spec struct {
+			AppName   string       `yaml:"appName"`
 			Listen    string       `yaml:"listen"`
 			Configs   ConfigsV1    `yaml:"configs"`
 			Resources []ResourceV1 `yaml:"resources"`
@@ -204,7 +205,7 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler
 		}
 		conf.Backend = backendUrl
 		conf.Frontend = frontendUrl
-		filters, err := BuildFilterChainV1s(resource.FilterChains)
+		filters, err := BuildFilterChainV1s(specV1.Spec.AppName, resource.FilterChains)
 		if err != nil {
 			return nil, err
 		}
@@ -225,10 +226,10 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler
 	}, nil
 }
 
-func BuildFilterChainV1s(filterChains []FilterChainV1) ([]filters.Filter, error) {
+func BuildFilterChainV1s(appName string, filterChains []FilterChainV1) ([]filters.Filter, error) {
 	filterList := make([]filters.Filter, 0)
 	for _, filter := range filterChains {
-		filter, err := BuildFilterChainV1(filter)
+		filter, err := BuildFilterChainV1(appName, filter)
 		if err != nil {
 			return nil, err
 		}
@@ -237,7 +238,7 @@ func BuildFilterChainV1s(filterChains []FilterChainV1) ([]filters.Filter, error)
 	return filterList, nil
 }
 
-func BuildFilterChainV1(filter FilterChainV1) (filters.Filter, error) {
+func BuildFilterChainV1(appName string, filter FilterChainV1) (filters.Filter, error) {
 	url, err := url.Parse(filter.Listerner)
 	if err != nil {
 		return nil, err
@@ -245,28 +246,28 @@ func BuildFilterChainV1(filter FilterChainV1) (filters.Filter, error) {
 	switch strings.ToLower(url.Scheme) {
 	case "http", "https":
 		{
-			return BuildHttp(filter, url)
+			return BuildHttp(appName, filter, url)
 		}
 	case "nats":
 		{
-			return BuildNats(filter, url)
+			return BuildNats(appName, filter, url)
 		}
 	case "grpc":
 		{
-			return BuildGrpc(filter, url)
+			return BuildGrpc(appName, filter, url)
 		}
 	}
 	return nil, fmt.Errorf("invalid filter")
 }
 
-func BuildCallbacksV1(callbacks []CallbackV1) ([]filters.Filter, error) {
+func BuildCallbacksV1(appName string, callbacks []CallbackV1) ([]filters.Filter, error) {
 	output := make([]filters.Filter, 0)
 	for _, filter := range callbacks {
 		level := "inherit"
 		if filter.Parallel {
 			level += "|parallel"
 		}
-		callback, err := BuildFilterChainV1(FilterChainV1{
+		callback, err := BuildFilterChainV1(appName, FilterChainV1{
 			Name:      filter.Name,
 			Listerner: filter.Listerner,
 			Method:    filter.Method,
@@ -282,8 +283,8 @@ func BuildCallbacksV1(callbacks []CallbackV1) ([]filters.Filter, error) {
 	return output, nil
 }
 
-func BuildHttp(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
-	callbacks, err := BuildCallbacksV1(filter.Callbacks)
+func BuildHttp(appName string, filter FilterChainV1, url *url.URL) (filters.Filter, error) {
+	callbacks, err := BuildCallbacksV1(appName, filter.Callbacks)
 	if err != nil {
 		return nil, err
 	}
@@ -307,8 +308,8 @@ func BuildHttp(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 	return &httpFilter, nil
 }
 
-func BuildNats(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
-	callbacks, err := BuildCallbacksV1(filter.Callbacks)
+func BuildNats(appName string, filter FilterChainV1, url *url.URL) (filters.Filter, error) {
+	callbacks, err := BuildCallbacksV1(appName, filter.Callbacks)
 	if err != nil {
 		return nil, err
 	}
@@ -326,6 +327,7 @@ func BuildNats(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 			return nats.Connect(url.Host)
 		})
 	}
+	subject := strings.TrimPrefix(url.Path, "/")
 	natsFilter := filters.NATSFilter{}
 	natsFilter.Name = filter.Name
 	natsFilter.Address = url
@@ -335,15 +337,16 @@ func BuildNats(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
 	natsFilter.Timeout = filter.Timeout
 	natsFilter.Url = url.Host
 	natsFilter.Filters = callbacks
-	natsFilter.Subject = strings.TrimPrefix(url.Path, "/")
+	natsFilter.Subject = subject
 	natsFilter.AwaitList = filter.Await
 	natsFilter.Durable = filter.Durable
+	natsFilter.ReflectionKey = fmt.Sprintf("$ICERBERG_%s_%s", strings.ToUpper(appName), strings.ToUpper(subject))
 	_initializers = append(_initializers, natsFilter.InitializeReflector)
 	return &natsFilter, nil
 }
 
-func BuildGrpc(filter FilterChainV1, url *url.URL) (filters.Filter, error) {
-	callbacks, err := BuildCallbacksV1(filter.Callbacks)
+func BuildGrpc(appName string, filter FilterChainV1, url *url.URL) (filters.Filter, error) {
+	callbacks, err := BuildCallbacksV1(appName, filter.Callbacks)
 	if err != nil {
 		return nil, err
 	}
