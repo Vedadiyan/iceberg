@@ -123,7 +123,7 @@ func (filter *NATSFilter) BaseHandler(r *http.Request, handler func(*nats.Msg) e
 
 	reply := queue.Conn().NewRespInbox()
 	msg.Header.Set("Reply", reply)
-	msg.Reply = filter.ReflectionKey
+	msg.Header.Set("Reflector", filter.ReflectionKey)
 
 	wg.Add(1)
 
