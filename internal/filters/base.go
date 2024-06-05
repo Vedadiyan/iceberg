@@ -189,7 +189,11 @@ func handlerFunc(filter Filter, r *http.Request) error {
 	if res == nil {
 		return nil
 	}
-	if res.Header.Get("status") != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
+	status := res.Header.Get("status")
+	if len(status) == 0 {
+		status = res.Header.Get("x-status")
+	}
+	if status != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
 		return common.NewHandlerError(common.HANDLER_ERROR_FILTER, res.StatusCode, res.Status)
 	}
 	err = filter.MoveTo(res, r)

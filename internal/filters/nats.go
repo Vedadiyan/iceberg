@@ -8,6 +8,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/vedadiyan/goal/pkg/di"
 	"github.com/vedadiyan/iceberg/internal/logger"
+	natshelpers "github.com/vedadiyan/nats-helpers"
 	natsqueue "github.com/vedadiyan/nats-helpers/queue"
 )
 
@@ -182,8 +183,6 @@ func (filter *NATSFilter) HandleDurableAsync(r *http.Request) {
 
 func (filter *NATSFilter) HandleSimpleSync(r *http.Request) (*http.Response, error) {
 	return filter.BaseHandler(r, func(m *nats.Msg) error {
-		m.Header.Set("X-Status", m.Header.Get("Status"))
-		m.Header.Del("Status")
 		return filter.GetConn().PublishMsg(m)
 	})
 }
@@ -234,23 +233,23 @@ func (filter *NATSFilter) DurableReflector() error {
 	if err != nil {
 		return err
 	}
-	_, err = queue.Pull(filter.ReflectionKey, func(m *nats.Msg) error {
+	_, err = queue.Pull(filter.ReflectionKey, func(m *nats.Msg) natshelpers.State {
 		msg := *m
 		msg.Subject = msg.Header.Get("Reply")
 		msg.Reply = ""
 		err := conn.PublishMsg(&msg)
 		if err != nil {
-			return err
+			return natshelpers.Drop()
 		}
 		req, err := RequestFrom(MsgToResponse(&msg))
 		if err != nil {
-			return err
+			return natshelpers.Drop()
 		}
 		err = HandleFilter(req, filter.Filters, INHERIT)
 		if err != nil {
-			return err
+			return natshelpers.Drop()
 		}
-		return nil
+		return natshelpers.Done()
 	})
 	return err
 }

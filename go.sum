@@ -42,6 +42,8 @@ github.com/vedadiyan/goal v0.2.11 h1:fbMpY+ecq9alC3FdiaQZnUbOqOyqwPn7ypyzdsbMYTY
 github.com/vedadiyan/goal v0.2.11/go.mod h1:uiuX9tuP9DCSES+CJSjFCazK6nv6bGsEl5sqm+rVJ5E=
 github.com/vedadiyan/nats-helpers v0.0.0-20240603112112-591a7717266b h1:rEjG1/LKlYzlBe2wVe7PVulVja9GKewGuHD9QB8urrw=
 github.com/vedadiyan/nats-helpers v0.0.0-20240603112112-591a7717266b/go.mod h1:2wdsUd5R7HFccmu+NnVinc8Ng43bzUbFEWqEOGNDkwQ=
+github.com/vedadiyan/nats-helpers v0.0.0-20240605031534-3764764b51bf h1:1SFZmRpvsWedGHu/izjXaijCUDcqdelYiAd+gjsyeGg=
+github.com/vedadiyan/nats-helpers v0.0.0-20240605031534-3764764b51bf/go.mod h1:2wdsUd5R7HFccmu+NnVinc8Ng43bzUbFEWqEOGNDkwQ=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.etcd.io/etcd/api/v3 v3.5.9 h1:4wSsluwyTbGGmyjJktOf3wFQoTBIURXHnq9n/G/JQHs=
