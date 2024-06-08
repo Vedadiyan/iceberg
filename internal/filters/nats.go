@@ -99,7 +99,7 @@ func (filter *NATSFilter) Await(id string) error {
 
 func (filter *NATSFilter) BaseHandler(r *http.Request, handler func(*nats.Msg) error) (*http.Response, error) {
 
-	id := r.Header.Get("x-request-id")
+	id := r.Header.Get("X-Request-Id")
 	if len(id) == 0 {
 		return nil, fmt.Errorf("request id not found")
 	}
