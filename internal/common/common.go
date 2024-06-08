@@ -27,8 +27,9 @@ func (handlerError HandlerError) Error() string {
 
 func NewHandlerError(class HandlerErrorClass, statusCode int, message string) error {
 	handlerError := HandlerError{
-		Class:   class,
-		Message: message,
+		Class:      class,
+		Message:    message,
+		StatusCode: statusCode,
 	}
 	return handlerError
 }
