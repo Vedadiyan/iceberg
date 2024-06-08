@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/vedadiyan/iceberg/internal/common"
@@ -189,12 +190,16 @@ func handlerFunc(filter Filter, r *http.Request) error {
 	if res == nil {
 		return nil
 	}
-	status := res.Header.Get("Status")
-	if len(status) == 0 {
-		status = res.Header.Get("X-Status")
+	statusStr := res.Header.Get("Status")
+	if len(statusStr) == 0 {
+		statusStr = res.Header.Get("X-Status")
 	}
-	if status != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
-		return common.NewHandlerError(common.HANDLER_ERROR_FILTER, res.StatusCode, res.Status)
+	status, err := strconv.Atoi(statusStr)
+	if err != nil {
+		status = 418
+	}
+	if statusStr != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
+		return common.NewHandlerError(common.HANDLER_ERROR_FILTER, status, res.Status)
 	}
 	err = filter.MoveTo(res, r)
 	if err != nil {
