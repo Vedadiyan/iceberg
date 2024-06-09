@@ -241,9 +241,16 @@ func (filter *NATSFilter) DurableReflector() error {
 		if err != nil {
 			return natshelpers.Drop()
 		}
+		for key, value := range msg.Header {
+			logger.Info(fmt.Sprintf("MSG %s: %v", key, value))
+		}
+
 		req, err := RequestFrom(MsgToResponse(&msg))
 		if err != nil {
 			return natshelpers.Drop()
+		}
+		for key, value := range req.Header {
+			logger.Info(fmt.Sprintf("REQ %s: %v", key, value))
 		}
 		err = HandleFilter(req, filter.Filters, INHERIT)
 		if err != nil {
@@ -269,10 +276,6 @@ func (filter *NATSFilter) SimpleReflector() error {
 			return
 		}
 
-		for key, value := range msg.Header {
-			logger.Info(fmt.Sprintf("MSG %s: %v", key, value))
-		}
-
 		req, err := RequestFrom(MsgToResponse(&msg))
 		if err != nil {
 			logger.Error(
@@ -282,9 +285,7 @@ func (filter *NATSFilter) SimpleReflector() error {
 			)
 			return
 		}
-		for key, value := range req.Header {
-			logger.Info(fmt.Sprintf("REQ %s: %v", key, value))
-		}
+
 		err = HandleFilter(req, filter.Filters, INHERIT)
 		if err != nil {
 			logger.Error(
