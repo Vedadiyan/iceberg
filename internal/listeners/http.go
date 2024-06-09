@@ -17,7 +17,8 @@ func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
 	if HandleCORS(conf, w, r) {
 		return
 	}
-	r.Header.Add("X-Request-Id", uuid.NewString())
+	requestId := uuid.NewString()
+	r.Header.Add("X-Request-Id", requestId)
 	logger.Info("handling request", r.URL.String(), r.Method)
 	logger.Info("handling request filters")
 	err := filters.HandleFilter(r, conf.Filters, filters.REQUEST)
@@ -40,6 +41,7 @@ func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	r.URL = &url
+	r.Header.Add("X-Request-Id", requestId)
 	log.Println("handling response filters")
 	err = filters.HandleFilter(r, conf.Filters, filters.RESPONSE)
 	if err != nil {
