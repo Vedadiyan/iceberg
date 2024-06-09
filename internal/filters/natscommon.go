@@ -31,8 +31,12 @@ func GetMsg(r *http.Request, subject string) (*nats.Msg, error) {
 			msg.Header.Add(key, value)
 		}
 	}
-	msg.Header.Set("Path", req.URL.Path)
-	msg.Header.Set("Query", req.URL.RawQuery)
+	if len(msg.Header.Get("Path")) == 0 {
+		msg.Header.Set("Path", req.URL.Path)
+	}
+	if len(msg.Header.Get("Query")) == 0 {
+		msg.Header.Set("Query", req.URL.RawQuery)
+	}
 	return &msg, nil
 }
 

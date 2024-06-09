@@ -285,7 +285,6 @@ func (filter *NATSFilter) SimpleReflector() error {
 			)
 			return
 		}
-
 		err = HandleFilter(req, filter.Filters, INHERIT)
 		if err != nil {
 			logger.Error(
