@@ -268,6 +268,11 @@ func (filter *NATSFilter) SimpleReflector() error {
 			)
 			return
 		}
+
+		for key, value := range msg.Header {
+			logger.Info(fmt.Sprintf("MSG %s: %v", key, value))
+		}
+
 		req, err := RequestFrom(MsgToResponse(&msg))
 		if err != nil {
 			logger.Error(
@@ -276,6 +281,9 @@ func (filter *NATSFilter) SimpleReflector() error {
 				logger.NameOfFunc(RequestFrom),
 			)
 			return
+		}
+		for key, value := range req.Header {
+			logger.Info(fmt.Sprintf("REQ %s: %v", key, value))
 		}
 		err = HandleFilter(req, filter.Filters, INHERIT)
 		if err != nil {
