@@ -87,8 +87,15 @@ func Await(conn *nats.Conn, awaitList []string, id string) error {
 			}
 			go func() {
 				for update := range watcher.Updates() {
+					if update == nil {
+						continue
+					}
+					if update.Value() == nil {
+						continue
+					}
 					if string(update.Value()) == "true" {
 						wg.Done()
+						fmt.Println("DONE")
 						return
 					}
 				}

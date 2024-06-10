@@ -25,11 +25,19 @@ spec:
           callbacks: 
             - name: generate-receipt
               listener: "nats://[[default_nats]]/tests.b"
-              parallel: false
+              parallel: true
               durable: true
               timeout: 30
             - name: generate-receipt-2
               listener: "nats://[[default_nats]]/tests.c"
-              parallel: false
+              parallel: true
               durable: true
               timeout: 30
+            - name: generate-receipt-3
+              listener: "nats://[[default_nats]]/tests.d"
+              parallel: false
+              durable: true
+              timeout: 30              
+              await: 
+                - generate-receipt
+                - generate-receipt-2

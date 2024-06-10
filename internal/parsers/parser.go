@@ -58,6 +58,7 @@ type (
 		Method    string       `yaml:"method"`
 		Timeout   int          `yaml:"timeout"`
 		Durable   bool         `yaml:"durable"`
+		Await     []string     `yaml:"await"`
 		Callbacks []CallbackV1 `yaml:"callbacks"`
 	}
 	ExchangeV1 struct {
@@ -274,6 +275,7 @@ func BuildCallbacksV1(appName string, callbacks []CallbackV1) ([]filters.Filter,
 			Level:     level,
 			Durable:   filter.Durable,
 			Callbacks: filter.Callbacks,
+			Await:     filter.Await,
 		})
 		if err != nil {
 			return nil, err
