@@ -144,7 +144,7 @@ func GetCORSOptions(specV1 *SpecV1) (*filters.CORS, error) {
 						}
 						cors.Methods = *value
 					}
-				case "headersAllowed":
+				case "headersallowed":
 					{
 						value, err := GetCORSValue[string](key, value)
 						if err != nil {
@@ -152,7 +152,7 @@ func GetCORSOptions(specV1 *SpecV1) (*filters.CORS, error) {
 						}
 						cors.Headers = *value
 					}
-				case "headersExposed":
+				case "headersexposed":
 					{
 						value, err := GetCORSValue[string](key, value)
 						if err != nil {
@@ -160,7 +160,7 @@ func GetCORSOptions(specV1 *SpecV1) (*filters.CORS, error) {
 						}
 						cors.ExposeHeader = *value
 					}
-				case "maxAge":
+				case "maxage":
 					{
 						value, err := GetCORSValue[string](key, value)
 						if err != nil {

@@ -7,7 +7,7 @@ spec:
       origin: ""
       methods: ""
       headersAllowed: ""
-      headersExposed: ""
+      headersExposed: "test"
       maxAge: ""
   resources:
     - name: freeze
