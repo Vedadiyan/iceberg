@@ -13,23 +13,6 @@ import (
 	"github.com/vedadiyan/iceberg/internal/logger"
 )
 
-var (
-	_successStatus = []int{
-		100,
-		101,
-		103,
-		200,
-		201,
-		202,
-		203,
-		204,
-		205,
-		206,
-		207,
-		226,
-	}
-)
-
 func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
 	if HandleCORS(conf, w, r) {
 		return
@@ -108,10 +91,5 @@ func httpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 }
 
 func isSuccess(statusCode int) bool {
-	for _, status := range _successStatus {
-		if statusCode == status {
-			return true
-		}
-	}
-	return false
+	return statusCode < 400
 }
