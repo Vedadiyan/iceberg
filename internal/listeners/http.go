@@ -13,6 +13,23 @@ import (
 	"github.com/vedadiyan/iceberg/internal/logger"
 )
 
+var (
+	_successStatus = []int{
+		100,
+		101,
+		103,
+		200,
+		201,
+		202,
+		203,
+		204,
+		205,
+		206,
+		207,
+		226,
+	}
+)
+
 func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
 	if HandleCORS(conf, w, r) {
 		return
@@ -78,7 +95,7 @@ func httpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 		logger.Error(err, "proxy failed")
 		return nil, err
 	}
-	if res.StatusCode%200 >= 100 && strings.ToLower(res.Header.Get(string(filters.HEADER_CONTINUE_ON_ERROR))) != "true" {
+	if !isSuccess(res.StatusCode) && strings.ToLower(res.Header.Get(string(filters.HEADER_CONTINUE_ON_ERROR))) != "true" {
 		r, err := io.ReadAll(res.Body)
 		if err != nil {
 			logger.Error(err, "proxy failed", res.StatusCode, "unknown")
@@ -88,4 +105,13 @@ func httpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 		return nil, common.NewHandlerError(common.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
 	}
 	return res, nil
+}
+
+func isSuccess(statusCode int) bool {
+	for _, status := range _successStatus {
+		if statusCode == status {
+			return true
+		}
+	}
+	return false
 }
