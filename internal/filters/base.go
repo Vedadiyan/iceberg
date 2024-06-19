@@ -35,6 +35,7 @@ type (
 		Frontend *url.URL
 		Backend  *url.URL
 		Filters  []Filter
+		Auth     Filter
 		CORS     *CORS
 	}
 	CORS struct {

@@ -37,6 +37,7 @@ type (
 		Name         string          `yaml:"name"`
 		Frontend     string          `yaml:"frontend"`
 		Backend      string          `yaml:"backend"`
+		Auth         *AuthV1         `yaml:"auth"`
 		FilterChains []FilterChainV1 `yaml:"filterChains"`
 	}
 	FilterChainV1 struct {
@@ -50,6 +51,11 @@ type (
 		Timeout   int            `yaml:"timeout"`
 		Await     []string       `yaml:"await"`
 		Durable   bool           `yaml:"durable"`
+	}
+	AuthV1 struct {
+		Listerner string `yaml:"listener"`
+		Method    string `yaml:"method"`
+		Timeout   int    `yaml:"timeout"`
 	}
 	CallbackV1 struct {
 		Name      string       `yaml:"name"`
@@ -210,8 +216,13 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler
 		if err != nil {
 			return nil, err
 		}
+		auth, err := BuildAuthV1(specV1.Spec.AppName, resource.Auth)
+		if err != nil {
+			return nil, err
+		}
 		logger.Info("config parsed")
 		conf.Filters = filters
+		conf.Auth = auth
 		handler := handlerFunc(&conf)
 		logger.Info("config", conf)
 		handler(mux)
@@ -256,6 +267,37 @@ func BuildFilterChainV1(appName string, filter FilterChainV1) (filters.Filter, e
 	case "grpc":
 		{
 			return BuildGrpc(appName, filter, url)
+		}
+	}
+	return nil, fmt.Errorf("invalid filter")
+}
+
+func BuildAuthV1(appName string, filter *AuthV1) (filters.Filter, error) {
+	if filter == nil {
+		return nil, nil
+	}
+	url, err := url.Parse(filter.Listerner)
+	if err != nil {
+		return nil, err
+	}
+
+	f := FilterChainV1{}
+	f.Name = "Authentication"
+	f.Level = "request"
+	f.Method = filter.Method
+
+	switch strings.ToLower(url.Scheme) {
+	case "http", "https":
+		{
+			return BuildHttp(appName, f, url)
+		}
+	case "nats":
+		{
+			return BuildNats(appName, f, url)
+		}
+	case "grpc":
+		{
+			return BuildGrpc(appName, f, url)
 		}
 	}
 	return nil, fmt.Errorf("invalid filter")

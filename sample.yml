@@ -13,6 +13,14 @@ spec:
     - name: freeze
       frontend: /
       backend: http://127.0.0.1:8080
+      auth: 
+        listener: "nats://[[default_nats]]/tests.a"
+        timeout: 30
+      cache: 
+        repository: "nats://[[default_nats]]/bucket/30s"
+        keyParams:
+          path: "$1-$2"
+          includeBody: false
       filterChains: 
         - name: payment-intent
           listener: "nats://[[default_nats]]/tests.a"
