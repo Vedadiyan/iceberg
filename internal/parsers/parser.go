@@ -194,7 +194,7 @@ func GetCORSValue[T any](key string, value any) (*T, error) {
 }
 
 func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf)) (Server, error) {
-	mux := http.NewServeMux()
+
 	cors, err := GetCORSOptions(specV1)
 	if err != nil {
 		return nil, err
@@ -233,6 +233,7 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf)) (Server, erro
 				return err
 			}
 		}
+		mux := http.NewServeMux()
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			handler, err := router.DefaultRouteTable().Find(r.URL, "*")
 			if err != nil {
