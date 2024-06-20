@@ -11,9 +11,10 @@ import (
 	"github.com/vedadiyan/iceberg/internal/common"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/logger"
+	"github.com/vedadiyan/iceberg/internal/router"
 )
 
-func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
+func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
 	if HandleCORS(conf, w, r) {
 		return
 	}
@@ -34,6 +35,10 @@ func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(418)
 			return
 		}
+	}
+
+	if conf.Cache != nil {
+
 	}
 
 	logger.Info("handling request filters")

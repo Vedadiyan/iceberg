@@ -10,9 +10,9 @@ import (
 	"github.com/nats-io/nats.go"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
 	"github.com/vedadiyan/goal/pkg/di"
-	"github.com/vedadiyan/iceberg/internal/common"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/logger"
+	"github.com/vedadiyan/iceberg/internal/router"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
 )
@@ -193,7 +193,7 @@ func GetCORSValue[T any](key string, value any) (*T, error) {
 	return &v, nil
 }
 
-func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler) (Server, error) {
+func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf)) (Server, error) {
 	mux := http.NewServeMux()
 	cors, err := GetCORSOptions(specV1)
 	if err != nil {
@@ -223,9 +223,8 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler
 		logger.Info("config parsed")
 		conf.Filters = filters
 		conf.Auth = auth
-		handler := handlerFunc(&conf)
+		handlerFunc(&conf)
 		logger.Info("config", conf)
-		handler(mux)
 	}
 	return func() error {
 		for _, initializer := range _initializers {
@@ -234,6 +233,14 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf) common.Handler
 				return err
 			}
 		}
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			handler, err := router.DefaultRouteTable().Find(r.URL, "*")
+			if err != nil {
+				logger.Error(err, "route not found")
+				return
+			}
+			handler(w, r)
+		})
 		return http.ListenAndServe(specV1.Spec.Listen, mux)
 	}, nil
 }

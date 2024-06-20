@@ -19,6 +19,10 @@ type (
 		Is(level Level) bool
 		MoveTo(*http.Response, *http.Request) error
 	}
+	Cache interface {
+		Get(key string) ([]byte, error)
+		Set(key string, value []byte) error
+	}
 	FilterBase struct {
 		Filter
 		Name            string
@@ -37,7 +41,9 @@ type (
 		Filters  []Filter
 		Auth     Filter
 		CORS     *CORS
+		Cache    Cache
 	}
+
 	CORS struct {
 		Origins      string
 		Headers      string
