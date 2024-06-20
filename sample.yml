@@ -19,7 +19,12 @@ spec:
       cache: 
         repository: "nats://[[default_nats]]/bucket/30s"
         keyParams:
-          path: "$1-$2"
+          path: 
+            - a
+            - b
+          query: 
+            - a
+            - b
           includeBody: false
       filterChains: 
         - name: payment-intent

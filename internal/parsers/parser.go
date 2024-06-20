@@ -37,6 +37,7 @@ type (
 		Frontend     string          `yaml:"frontend"`
 		Backend      string          `yaml:"backend"`
 		Auth         *AuthV1         `yaml:"auth"`
+		Cache        *CacheV1        `yaml:"cahce"`
 		FilterChains []FilterChainV1 `yaml:"filterChains"`
 	}
 	FilterChainV1 struct {
@@ -55,6 +56,14 @@ type (
 		Listerner string `yaml:"listener"`
 		Method    string `yaml:"method"`
 		Timeout   int    `yaml:"timeout"`
+	}
+	CacheV1 struct {
+		Repository string `yaml:"repository"`
+		KeyParams  struct {
+			Route []string `yaml:"route"`
+			Query []string `yaml:"query"`
+			Body  bool     `yaml:"body"`
+		} `yaml:"keyParams"`
 	}
 	CallbackV1 struct {
 		Name      string       `yaml:"name"`

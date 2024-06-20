@@ -38,7 +38,19 @@ func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request, rv 
 	}
 
 	if conf.Cache != nil {
-
+		res, err := conf.Cache.Get(rv, r)
+		if err != nil {
+			logger.Error(err, "cache failed")
+			if handlerError, ok := err.(common.HandlerError); ok {
+				w.WriteHeader(handlerError.StatusCode)
+				w.Write([]byte(handlerError.Message))
+				return
+			}
+			w.WriteHeader(418)
+			return
+		}
+		w.WriteHeader(200)
+		w.Write(res)
 	}
 
 	logger.Info("handling request filters")
@@ -84,6 +96,12 @@ func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request, rv 
 	if err != nil {
 		w.WriteHeader(500)
 		return
+	}
+	if conf.Cache != nil {
+		err := conf.Cache.Set(rv, r, body)
+		if err != nil {
+			logger.Error(err, "cache  failed")
+		}
 	}
 	w.Write(body)
 }

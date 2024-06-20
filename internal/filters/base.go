@@ -20,8 +20,8 @@ type (
 		MoveTo(*http.Response, *http.Request) error
 	}
 	Cache interface {
-		Get(key string) ([]byte, error)
-		Set(key string, value []byte) error
+		Get(rv map[string]string, r *http.Request) ([]byte, error)
+		Set(rv map[string]string, r *http.Request, value []byte) error
 	}
 	FilterBase struct {
 		Filter
