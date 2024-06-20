@@ -12,7 +12,6 @@ import (
 	"github.com/vedadiyan/goal/pkg/di"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/logger"
-	"github.com/vedadiyan/iceberg/internal/router"
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
 )
@@ -71,7 +70,7 @@ type (
 		Headers []string `yaml:"headers"`
 		Body    bool     `yaml:"body"`
 	}
-	Server func() error
+	Server func(http.HandlerFunc) error
 )
 
 const (
@@ -193,8 +192,7 @@ func GetCORSValue[T any](key string, value any) (*T, error) {
 	return &v, nil
 }
 
-func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf)) (Server, error) {
-
+func BuildV1(specV1 *SpecV1, registerer func(conf *filters.Conf)) (Server, error) {
 	cors, err := GetCORSOptions(specV1)
 	if err != nil {
 		return nil, err
@@ -223,10 +221,10 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf)) (Server, erro
 		logger.Info("config parsed")
 		conf.Filters = filters
 		conf.Auth = auth
-		handlerFunc(&conf)
+		registerer(&conf)
 		logger.Info("config", conf)
 	}
-	return func() error {
+	return func(handleFunc http.HandlerFunc) error {
 		for _, initializer := range _initializers {
 			err := initializer()
 			if err != nil {
@@ -234,14 +232,7 @@ func BuildV1(specV1 *SpecV1, handlerFunc func(conf *filters.Conf)) (Server, erro
 			}
 		}
 		mux := http.NewServeMux()
-		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			handler, err := router.DefaultRouteTable().Find(r.URL, "*")
-			if err != nil {
-				logger.Error(err, "route not found")
-				return
-			}
-			handler(w, r)
-		})
+		mux.HandleFunc("/", handleFunc)
 		return http.ListenAndServe(specV1.Spec.Listen, mux)
 	}, nil
 }

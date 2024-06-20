@@ -7,6 +7,7 @@ import (
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/listeners"
+	"github.com/vedadiyan/iceberg/internal/logger"
 	"github.com/vedadiyan/iceberg/internal/parsers"
 	"github.com/vedadiyan/iceberg/internal/router"
 )
@@ -24,7 +25,7 @@ func main() {
 			if !ok {
 				log.Fatalln("invalid program")
 			}
-			server, err = parsers.BuildV1(specV1, handlerFunc)
+			server, err = parsers.BuildV1(specV1, registerer)
 			if err != nil {
 				log.Fatalln(err.Error())
 			}
@@ -35,13 +36,13 @@ func main() {
 		}
 	}
 	auto.ForConfigMap().Bootstrap()
-	err = server()
+	err = server(handler)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
 }
 
-func handlerFunc(conf *filters.Conf) {
+func registerer(conf *filters.Conf) {
 	router.DefaultRouteTable().Register(conf.Frontend, "*", func(w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
 		if listeners.IsWebSocket(r) {
 			listeners.WebSocketHandler(conf, w, r)
@@ -49,4 +50,13 @@ func handlerFunc(conf *filters.Conf) {
 		}
 		listeners.HttpHandler(conf, w, r, rv)
 	})
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	handler, err := router.DefaultRouteTable().Find(r.URL, "*")
+	if err != nil {
+		logger.Error(err, "route not found")
+		return
+	}
+	handler(w, r)
 }
