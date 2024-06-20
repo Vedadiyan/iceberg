@@ -10,13 +10,22 @@ import (
 	"sync"
 )
 
-type RouterError string
-type RouteValues map[string]string
-type HandlerFunc func(http.ResponseWriter, *http.Request, RouteValues)
-
-func (routerError RouterError) Error() string {
-	return string(routerError)
-}
+type (
+	RouterError string
+	RouteValues map[string]string
+	HandlerFunc func(http.ResponseWriter, *http.Request, RouteValues)
+	RouteTable  struct {
+		routes  map[int][]*Route
+		configs map[string]HandlerFunc
+	}
+	Route struct {
+		host        string
+		method      string
+		routeValues map[int]string
+		routeParams map[int]string
+		hash        string
+	}
+)
 
 const (
 	NO_MATCH_FOUND    RouterError = "no match found"
@@ -28,17 +37,8 @@ var (
 	_once       sync.Once
 )
 
-type RouteTable struct {
-	routes  map[int][]*Route
-	configs map[string]HandlerFunc
-}
-
-type Route struct {
-	host        string
-	method      string
-	routeValues map[int]string
-	routeParams map[int]string
-	hash        string
+func (routerError RouterError) Error() string {
+	return string(routerError)
 }
 
 func (r *Route) Bind(route *Route) map[string]string {
