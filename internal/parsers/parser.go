@@ -10,6 +10,7 @@ import (
 	"github.com/nats-io/nats.go"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
 	"github.com/vedadiyan/goal/pkg/di"
+	"github.com/vedadiyan/iceberg/internal/conf"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/logger"
 	"google.golang.org/grpc"
@@ -122,14 +123,14 @@ func Parse() (ApiVersion, any, error) {
 	}
 }
 
-func GetCORSOptions(specV1 *SpecV1) (*filters.CORS, error) {
+func GetCORSOptions(specV1 *SpecV1) (*conf.CORS, error) {
 	switch value := specV1.Spec.Configs.CORS.(type) {
 	case string:
 		{
 			if strings.ToLower(value) != "default" {
 				return nil, fmt.Errorf("unexpected value %s", value)
 			}
-			cors := &filters.CORS{}
+			cors := &conf.CORS{}
 			cors.Origins = "*"
 			cors.Headers = "*"
 			cors.Methods = "GET, DELETE, OPTIONS, POST, PUT"
@@ -139,7 +140,7 @@ func GetCORSOptions(specV1 *SpecV1) (*filters.CORS, error) {
 		}
 	case map[string]any:
 		{
-			cors := &filters.CORS{}
+			cors := &conf.CORS{}
 			for key, value := range value {
 				switch strings.ToLower(key) {
 				case "origin":
@@ -201,13 +202,13 @@ func GetCORSValue[T any](key string, value any) (*T, error) {
 	return &v, nil
 }
 
-func BuildV1(specV1 *SpecV1, registerer func(conf *filters.Conf)) (Server, error) {
+func BuildV1(specV1 *SpecV1, registerer func(conf *conf.Conf)) (Server, error) {
 	cors, err := GetCORSOptions(specV1)
 	if err != nil {
 		return nil, err
 	}
 	for _, resource := range specV1.Spec.Resources {
-		conf := filters.Conf{}
+		conf := conf.Conf{}
 		conf.CORS = cors
 		backendUrl, err := url.Parse(resource.Backend)
 		if err != nil {

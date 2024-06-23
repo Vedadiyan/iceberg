@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
-	"github.com/vedadiyan/iceberg/internal/filters"
+	"github.com/vedadiyan/iceberg/internal/conf"
 	"github.com/vedadiyan/iceberg/internal/listeners"
 	"github.com/vedadiyan/iceberg/internal/logger"
 	"github.com/vedadiyan/iceberg/internal/parsers"
@@ -42,7 +42,7 @@ func main() {
 	}
 }
 
-func registerer(conf *filters.Conf) {
+func registerer(conf *conf.Conf) {
 	router.DefaultRouteTable().Register(conf.Frontend, "*", func(w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
 		if listeners.IsWebSocket(r) {
 			listeners.WebSocketHandler(conf, w, r)

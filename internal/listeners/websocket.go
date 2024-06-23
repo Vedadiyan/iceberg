@@ -7,12 +7,13 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/vedadiyan/iceberg/internal/common"
+	"github.com/vedadiyan/iceberg/internal/conf"
 	"github.com/vedadiyan/iceberg/internal/filters"
 )
 
 type (
 	WebSocketProxy struct {
-		Conf            *filters.Conf
+		Conf            *conf.Conf
 		Conn            *websocket.Conn
 		ProxiedConn     *websocket.Conn
 		Request         *http.Request
@@ -28,7 +29,7 @@ var (
 	}
 )
 
-func WebSocketHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request) {
+func WebSocketHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request) {
 	if HandleCORS(conf, w, r) {
 		return
 	}
@@ -164,7 +165,7 @@ func (wsp *WebSocketProxy) ResponseHandler() {
 	}
 }
 
-func NewWebSocketProxy(conf *filters.Conf, w http.ResponseWriter, r *http.Request) (*WebSocketProxy, error) {
+func NewWebSocketProxy(conf *conf.Conf, w http.ResponseWriter, r *http.Request) (*WebSocketProxy, error) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return nil, err

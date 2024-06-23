@@ -19,10 +19,6 @@ type (
 		Is(level Level) bool
 		MoveTo(*http.Response, *http.Request) error
 	}
-	Cache interface {
-		Get(rv map[string]string, r *http.Request) ([]byte, error)
-		Set(rv map[string]string, r *http.Request, value []byte) error
-	}
 	FilterBase struct {
 		Filter
 		Name            string
@@ -34,22 +30,6 @@ type (
 		Timeout         int
 		Filters         []Filter
 		AwaitList       []string
-	}
-	Conf struct {
-		Frontend *url.URL
-		Backend  *url.URL
-		Filters  []Filter
-		Auth     Filter
-		CORS     *CORS
-		Cache    Cache
-	}
-
-	CORS struct {
-		Origins      string
-		Headers      string
-		Methods      string
-		ExposeHeader string
-		MaxAge       string
 	}
 	Request struct {
 		Url    *url.URL

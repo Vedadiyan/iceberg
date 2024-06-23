@@ -3,10 +3,10 @@ package listeners
 import (
 	"net/http"
 
-	"github.com/vedadiyan/iceberg/internal/filters"
+	"github.com/vedadiyan/iceberg/internal/conf"
 )
 
-func HandleCORS(conf *filters.Conf, w http.ResponseWriter, r *http.Request) bool {
+func HandleCORS(conf *conf.Conf, w http.ResponseWriter, r *http.Request) bool {
 	if conf.CORS != nil {
 		if r.Method == "OPTIONS" {
 			w.Header().Add("access-control-allow-origin", conf.CORS.Origins)

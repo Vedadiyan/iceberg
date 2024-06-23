@@ -9,12 +9,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/vedadiyan/iceberg/internal/common"
+	"github.com/vedadiyan/iceberg/internal/conf"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/logger"
 	"github.com/vedadiyan/iceberg/internal/router"
 )
 
-func HttpHandler(conf *filters.Conf, w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
+func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
 	if HandleCORS(conf, w, r) {
 		return
 	}
