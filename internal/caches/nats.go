@@ -21,10 +21,7 @@ type (
 )
 
 func (js *JetStream) Get(rv map[string]string, r *http.Request) ([]byte, error) {
-	var err error
-	js.once.Do(func() {
-		err = js.init()
-	})
+	err := js.init()
 	if err != nil {
 		return nil, err
 	}
@@ -39,10 +36,7 @@ func (js *JetStream) Get(rv map[string]string, r *http.Request) ([]byte, error) 
 	return value.Value(), nil
 }
 func (js *JetStream) Set(rv map[string]string, r *http.Request, value []byte) error {
-	var err error
-	js.once.Do(func() {
-		err = js.init()
-	})
+	err := js.init()
 	if err != nil {
 		return err
 	}
@@ -55,20 +49,25 @@ func (js *JetStream) Set(rv map[string]string, r *http.Request, value []byte) er
 }
 
 func (js *JetStream) init() error {
-	_js, err := js.conn.JetStream()
-	if err != nil {
-		return err
-	}
-	kv, err := _js.CreateKeyValue(&nats.KeyValueConfig{
-		Bucket: js.bucket,
-		TTL:    js.ttl,
+	var err error
+	js.once.Do(func() {
+		_js, _err := js.conn.JetStream()
+		if _err != nil {
+			err = _err
+			return
+		}
+		kv, _err := _js.CreateKeyValue(&nats.KeyValueConfig{
+			Bucket: js.bucket,
+			TTL:    js.ttl,
+		})
+		if _err == jetstream.ErrBucketExists {
+			kv, _err = _js.KeyValue(js.bucket)
+		}
+		if _err != nil {
+			err = _err
+			return
+		}
+		js.kv = kv
 	})
-	if err == jetstream.ErrBucketExists {
-		kv, err = _js.KeyValue(js.bucket)
-	}
-	if err != nil {
-		return err
-	}
-	js.kv = kv
-	return nil
+	return err
 }
