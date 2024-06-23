@@ -2,33 +2,73 @@ package caches
 
 import (
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 type (
 	JetStream struct {
-		js        nats.KeyValue
+		conn      *nats.Conn
+		bucket    string
+		ttl       time.Duration
+		kv        nats.KeyValue
 		KeyParams KeyParams
+		once      sync.Once
 	}
 )
 
 func (js *JetStream) Get(rv map[string]string, r *http.Request) ([]byte, error) {
+	var err error
+	js.once.Do(func() {
+		err = js.init()
+	})
+	if err != nil {
+		return nil, err
+	}
 	key, err := js.KeyParams.GetKey(rv, r)
 	if err != nil {
 		return nil, err
 	}
-	value, err := js.js.Get(key)
+	value, err := js.kv.Get(key)
 	if err != nil {
 		return nil, err
 	}
 	return value.Value(), nil
 }
 func (js *JetStream) Set(rv map[string]string, r *http.Request, value []byte) error {
+	var err error
+	js.once.Do(func() {
+		err = js.init()
+	})
+	if err != nil {
+		return err
+	}
 	key, err := js.KeyParams.GetKey(rv, r)
 	if err != nil {
 		return err
 	}
-	_, err = js.js.Put(key, value)
+	_, err = js.kv.Put(key, value)
 	return err
+}
+
+func (js *JetStream) init() error {
+	_js, err := js.conn.JetStream()
+	if err != nil {
+		return err
+	}
+	kv, err := _js.CreateKeyValue(&nats.KeyValueConfig{
+		Bucket: js.bucket,
+		TTL:    js.ttl,
+	})
+	if err == jetstream.ErrBucketExists {
+		kv, err = _js.KeyValue(js.bucket)
+	}
+	if err != nil {
+		return err
+	}
+	js.kv = kv
+	return nil
 }
