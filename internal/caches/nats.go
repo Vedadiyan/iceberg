@@ -35,6 +35,7 @@ func (js *JetStream) Get(rv map[string]string, r *http.Request) ([]byte, error) 
 	}
 	return value.Value(), nil
 }
+
 func (js *JetStream) Set(rv map[string]string, r *http.Request, value []byte) error {
 	err := js.init()
 	if err != nil {
