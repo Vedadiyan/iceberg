@@ -12,7 +12,6 @@ type (
 		Frontend *url.URL
 		Backend  *url.URL
 		Filters  []filters.Filter
-		Auth     filters.Filter
 		CORS     *CORS
 		Cache    caches.Cache
 	}

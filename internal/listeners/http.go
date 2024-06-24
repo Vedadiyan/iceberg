@@ -23,19 +23,17 @@ func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv rou
 	r.Header.Add("X-Request-Id", requestId)
 	logger.Info("handling request", r.URL.String(), r.Method)
 
-	if conf.Auth != nil {
-		logger.Info("handling auth filter")
-		err := filters.HandleFilter(r, []filters.Filter{conf.Auth}, filters.REQUEST)
-		if err != nil {
-			logger.Error(err, "auth filter failed")
-			if handlerError, ok := err.(common.HandlerError); ok {
-				w.WriteHeader(handlerError.StatusCode)
-				w.Write([]byte(handlerError.Message))
-				return
-			}
-			w.WriteHeader(418)
+	logger.Info("handling connect filters")
+	err := filters.HandleFilter(r, conf.Filters, filters.CONNECT)
+	if err != nil {
+		logger.Error(err, "connect filter failed")
+		if handlerError, ok := err.(common.HandlerError); ok {
+			w.WriteHeader(handlerError.StatusCode)
+			w.Write([]byte(handlerError.Message))
 			return
 		}
+		w.WriteHeader(418)
+		return
 	}
 
 	if conf.Cache != nil {
@@ -55,7 +53,7 @@ func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv rou
 	}
 
 	logger.Info("handling request filters")
-	err := filters.HandleFilter(r, conf.Filters, filters.REQUEST)
+	err = filters.HandleFilter(r, conf.Filters, filters.REQUEST)
 	if err != nil {
 		logger.Error(err, "request filter failed")
 		if handlerError, ok := err.(common.HandlerError); ok {
