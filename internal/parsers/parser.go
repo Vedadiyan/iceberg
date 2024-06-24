@@ -10,6 +10,7 @@ import (
 	"github.com/nats-io/nats.go"
 	auto "github.com/vedadiyan/goal/pkg/config/auto"
 	"github.com/vedadiyan/goal/pkg/di"
+	"github.com/vedadiyan/iceberg/internal/caches"
 	"github.com/vedadiyan/iceberg/internal/conf"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/logger"
@@ -223,8 +224,13 @@ func BuildV1(specV1 *SpecV1, registerer func(conf *conf.Conf)) (Server, error) {
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("config parsed")
 		conf.Filters = filters
+		cache, err := BuildCacheV1(specV1.Spec.AppName, resource.Cache)
+		if err != nil {
+			return nil, err
+		}
+		conf.Cache = cache
+		logger.Info("config parsed")
 		registerer(&conf)
 		logger.Info("config", conf)
 	}
@@ -244,7 +250,7 @@ func BuildV1(specV1 *SpecV1, registerer func(conf *conf.Conf)) (Server, error) {
 func BuildFilterChainV1s(appName string, filterChains []FilterChainV1) ([]filters.Filter, error) {
 	filterList := make([]filters.Filter, 0)
 	for _, filter := range filterChains {
-		filter, err := BuildFilterChainV1(appName, filter)
+		filter, err := BuildFilterChainV1(appName, &filter)
 		if err != nil {
 			return nil, err
 		}
@@ -253,7 +259,7 @@ func BuildFilterChainV1s(appName string, filterChains []FilterChainV1) ([]filter
 	return filterList, nil
 }
 
-func BuildFilterChainV1(appName string, filter FilterChainV1) (filters.Filter, error) {
+func BuildFilterChainV1(appName string, filter *FilterChainV1) (filters.Filter, error) {
 	url, err := url.Parse(filter.Listerner)
 	if err != nil {
 		return nil, err
@@ -275,6 +281,27 @@ func BuildFilterChainV1(appName string, filter FilterChainV1) (filters.Filter, e
 	return nil, fmt.Errorf("invalid filter")
 }
 
+func BuildCacheV1(appName string, cache *CacheV1) (caches.Cache, error) {
+	if cache == nil {
+		return nil, nil
+	}
+	url, err := url.Parse(cache.Repository)
+	if err != nil {
+		return nil, err
+	}
+	switch strings.ToLower(url.Scheme) {
+	case "jetsream":
+		{
+			return BuildJetStream(appName, cache, url)
+		}
+	case "redis":
+		{
+
+		}
+	}
+	return nil, fmt.Errorf("invalid filter")
+}
+
 func BuildCallbacksV1(appName string, callbacks []CallbackV1) ([]filters.Filter, error) {
 	output := make([]filters.Filter, 0)
 	for _, filter := range callbacks {
@@ -282,7 +309,7 @@ func BuildCallbacksV1(appName string, callbacks []CallbackV1) ([]filters.Filter,
 		if filter.Parallel {
 			level += "|parallel"
 		}
-		callback, err := BuildFilterChainV1(appName, FilterChainV1{
+		callback, err := BuildFilterChainV1(appName, &FilterChainV1{
 			Name:      filter.Name,
 			Listerner: filter.Listerner,
 			Method:    filter.Method,
@@ -299,7 +326,7 @@ func BuildCallbacksV1(appName string, callbacks []CallbackV1) ([]filters.Filter,
 	return output, nil
 }
 
-func BuildHttp(appName string, filter FilterChainV1, url *url.URL) (filters.Filter, error) {
+func BuildHttp(appName string, filter *FilterChainV1, url *url.URL) (filters.Filter, error) {
 	callbacks, err := BuildCallbacksV1(appName, filter.Callbacks)
 	if err != nil {
 		return nil, err
@@ -324,7 +351,7 @@ func BuildHttp(appName string, filter FilterChainV1, url *url.URL) (filters.Filt
 	return &httpFilter, nil
 }
 
-func BuildNats(appName string, filter FilterChainV1, url *url.URL) (filters.Filter, error) {
+func BuildNats(appName string, filter *FilterChainV1, url *url.URL) (filters.Filter, error) {
 	callbacks, err := BuildCallbacksV1(appName, filter.Callbacks)
 	if err != nil {
 		return nil, err
@@ -361,7 +388,7 @@ func BuildNats(appName string, filter FilterChainV1, url *url.URL) (filters.Filt
 	return &natsFilter, nil
 }
 
-func BuildGrpc(appName string, filter FilterChainV1, url *url.URL) (filters.Filter, error) {
+func BuildGrpc(appName string, filter *FilterChainV1, url *url.URL) (filters.Filter, error) {
 	callbacks, err := BuildCallbacksV1(appName, filter.Callbacks)
 	if err != nil {
 		return nil, err
@@ -391,6 +418,35 @@ func BuildGrpc(appName string, filter FilterChainV1, url *url.URL) (filters.Filt
 	grpcFilter.Filters = callbacks
 	grpcFilter.AwaitList = filter.Await
 	return &grpcFilter, nil
+}
+
+func BuildJetStream(appName string, cache *CacheV1, url *url.URL) (caches.Cache, error) {
+	if strings.HasPrefix(url.Host, "[[") && strings.HasSuffix(url.Host, "]]") {
+		url.Host = strings.TrimSuffix(strings.TrimPrefix(url.Host, "[["), "]]")
+		auto.Register(auto.New(url.Host, false, func(value string) {
+			logger.Info("nats", value)
+			_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
+				return nats.Connect(value)
+			})
+		}))
+	} else {
+		_ = di.AddSinletonWithName(url.Host, func() (instance *nats.Conn, err error) {
+			return nats.Connect(url.Host)
+		})
+	}
+	segments := strings.Split(strings.TrimPrefix(url.Path, "/"), "/")
+	natsFilter := caches.JetStream{}
+	natsFilter.Url = url.Host
+	natsFilter.Bucket = segments[0]
+	if len(segments) > 1 {
+		natsFilter.TTL = 0
+	}
+	natsFilter.KeyParams = caches.KeyParams{}
+	natsFilter.KeyParams.Route = cache.KeyParams.Route
+	natsFilter.KeyParams.Query = cache.KeyParams.Query
+	natsFilter.KeyParams.Body = cache.KeyParams.Body
+	_initializers = append(_initializers, natsFilter.Initializer)
+	return &natsFilter, nil
 }
 
 func Levels(level string) filters.Level {

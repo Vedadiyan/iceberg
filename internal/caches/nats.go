@@ -11,9 +11,10 @@ import (
 
 type (
 	JetStream struct {
+		Url       string
+		Bucket    string
+		TTL       time.Duration
 		conn      *nats.Conn
-		bucket    string
-		ttl       time.Duration
 		kv        nats.KeyValue
 		KeyParams KeyParams
 		once      sync.Once
@@ -21,10 +22,6 @@ type (
 )
 
 func (js *JetStream) Get(rv map[string]string, r *http.Request) ([]byte, error) {
-	err := js.init()
-	if err != nil {
-		return nil, err
-	}
 	key, err := js.KeyParams.GetKey(rv, r)
 	if err != nil {
 		return nil, err
@@ -37,10 +34,6 @@ func (js *JetStream) Get(rv map[string]string, r *http.Request) ([]byte, error) 
 }
 
 func (js *JetStream) Set(rv map[string]string, r *http.Request, value []byte) error {
-	err := js.init()
-	if err != nil {
-		return err
-	}
 	key, err := js.KeyParams.GetKey(rv, r)
 	if err != nil {
 		return err
@@ -49,7 +42,7 @@ func (js *JetStream) Set(rv map[string]string, r *http.Request, value []byte) er
 	return err
 }
 
-func (js *JetStream) init() error {
+func (js *JetStream) Initializer() error {
 	var err error
 	js.once.Do(func() {
 		_js, _err := js.conn.JetStream()
@@ -58,11 +51,11 @@ func (js *JetStream) init() error {
 			return
 		}
 		kv, _err := _js.CreateKeyValue(&nats.KeyValueConfig{
-			Bucket: js.bucket,
-			TTL:    js.ttl,
+			Bucket: js.Bucket,
+			TTL:    js.TTL,
 		})
 		if _err == jetstream.ErrBucketExists {
-			kv, _err = _js.KeyValue(js.bucket)
+			kv, _err = _js.KeyValue(js.Bucket)
 		}
 		if _err != nil {
 			err = _err
