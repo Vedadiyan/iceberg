@@ -7,6 +7,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
+	"github.com/vedadiyan/goal/pkg/di"
 )
 
 type (
@@ -45,6 +46,12 @@ func (js *JetStream) Set(rv map[string]string, r *http.Request, value []byte) er
 func (js *JetStream) Initializer() error {
 	var err error
 	js.once.Do(func() {
+		conn, _err := di.ResolveWithName[nats.Conn](js.Url, nil)
+		if err != nil {
+			err = _err
+			return
+		}
+		js.conn = conn
 		_js, _err := js.conn.JetStream()
 		if _err != nil {
 			err = _err
