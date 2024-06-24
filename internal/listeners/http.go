@@ -34,7 +34,7 @@ func (stepFunctions StepFunctions) Run() error {
 	return nil
 }
 
-func Initializer(conf *conf.Conf, r *http.Request, rv router.RouteValues, requestId *string, key *string) Func {
+func Initialize(conf *conf.Conf, r *http.Request, rv router.RouteValues, requestId *string, key *string) Func {
 	return func() (bool, error) {
 		*requestId = uuid.NewString()
 		r.Header.Add("X-Request-Id", *requestId)
@@ -53,7 +53,7 @@ func Initializer(conf *conf.Conf, r *http.Request, rv router.RouteValues, reques
 	}
 }
 
-func HandleFilters(conf *conf.Conf, r *http.Request, level filters.Level) Func {
+func Intercept(conf *conf.Conf, r *http.Request, level filters.Level) Func {
 	return func() (bool, error) {
 		err := filters.HandleFilter(r, conf.Filters, level)
 		if err != nil {
@@ -78,7 +78,7 @@ func GetCache(conf *conf.Conf, w http.ResponseWriter, key string) Func {
 			if err != nil {
 				return false, err
 			}
-			_, err = Finalizer(w, &r)()
+			_, err = Finalize(w, &r)()
 			if err != nil {
 				return false, err
 			}
@@ -102,7 +102,7 @@ func SetCache(conf *conf.Conf, key string, r *http.Request) Func {
 	}
 }
 
-func HandleProxy(conf *conf.Conf, r *http.Request, requestId string) Func {
+func Proxy(conf *conf.Conf, r *http.Request, requestId string) Func {
 	return func() (bool, error) {
 		url := *r.URL
 		r, err := filters.RequestFrom(httpProxy(r, conf.Backend))
@@ -115,7 +115,7 @@ func HandleProxy(conf *conf.Conf, r *http.Request, requestId string) Func {
 	}
 }
 
-func Finalizer(w http.ResponseWriter, r *http.Request) Func {
+func Finalize(w http.ResponseWriter, r *http.Request) Func {
 	return func() (bool, error) {
 		clone, err := filters.CloneRequest(r)
 		if err != nil {
@@ -143,13 +143,13 @@ func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv rou
 	var requestId string
 	stepFunctions := StepFunctions{
 		HandleCORS(conf, w, r),
-		Initializer(conf, r, rv, &requestId, &key),
-		HandleFilters(conf, r, filters.CONNECT),
+		Initialize(conf, r, rv, &requestId, &key),
+		Intercept(conf, r, filters.CONNECT),
 		GetCache(conf, w, key),
-		HandleFilters(conf, r, filters.REQUEST),
-		HandleProxy(conf, r, requestId),
-		HandleFilters(conf, r, filters.RESPONSE),
-		Finalizer(w, r),
+		Intercept(conf, r, filters.REQUEST),
+		Proxy(conf, r, requestId),
+		Intercept(conf, r, filters.RESPONSE),
+		Finalize(w, r),
 		SetCache(conf, key, r),
 	}
 	err := stepFunctions.Run()
