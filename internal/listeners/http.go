@@ -34,6 +34,25 @@ func (stepFunctions StepFunctions) Run() error {
 	return nil
 }
 
+func Initializer(conf *conf.Conf, r *http.Request, rv router.RouteValues, requestId *string, key *string) Func {
+	return func() (bool, error) {
+		*requestId = uuid.NewString()
+		r.Header.Add("X-Request-Id", *requestId)
+		clone, err := filters.CloneRequest(r)
+		if err != nil {
+			return false, err
+		}
+		if conf.Cache != nil {
+			_key, err := conf.Cache.Key(rv, clone)
+			if err != nil {
+				return false, err
+			}
+			*key = _key
+		}
+		return true, nil
+	}
+}
+
 func HandleFilters(conf *conf.Conf, r *http.Request, level filters.Level) Func {
 	return func() (bool, error) {
 		err := filters.HandleFilter(r, conf.Filters, level)
@@ -122,23 +141,9 @@ func Finalizer(w http.ResponseWriter, r *http.Request) Func {
 func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
 	var key string
 	var requestId string
-	init := func() (bool, error) {
-		requestId = uuid.NewString()
-		r.Header.Add("X-Request-Id", requestId)
-		clone, err := filters.CloneRequest(r)
-		if err != nil {
-			return false, err
-		}
-		_key, err := conf.Cache.Key(rv, clone)
-		if err != nil {
-			return false, err
-		}
-		key = _key
-		return true, nil
-	}
 	stepFunctions := StepFunctions{
 		HandleCORS(conf, w, r),
-		init,
+		Initializer(conf, r, rv, &requestId, &key),
 		HandleFilters(conf, r, filters.CONNECT),
 		GetCache(conf, w, key),
 		HandleFilters(conf, r, filters.REQUEST),
