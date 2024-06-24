@@ -22,11 +22,11 @@ type (
 	}
 )
 
-func (js *JetStream) Get(rv map[string]string, r *http.Request) ([]byte, error) {
-	key, err := js.KeyParams.GetKey(rv, r)
-	if err != nil {
-		return nil, err
-	}
+func (js *JetStream) Key(rv map[string]string, r *http.Request) (string, error) {
+	return js.KeyParams.GetKey(rv, r)
+}
+
+func (js *JetStream) Get(key string) ([]byte, error) {
 	value, err := js.kv.Get(key)
 	if err != nil {
 		return nil, err
@@ -34,12 +34,8 @@ func (js *JetStream) Get(rv map[string]string, r *http.Request) ([]byte, error) 
 	return value.Value(), nil
 }
 
-func (js *JetStream) Set(rv map[string]string, r *http.Request, value []byte) error {
-	key, err := js.KeyParams.GetKey(rv, r)
-	if err != nil {
-		return err
-	}
-	_, err = js.kv.Put(key, value)
+func (js *JetStream) Set(key string, value []byte) error {
+	_, err := js.kv.Put(key, value)
 	return err
 }
 

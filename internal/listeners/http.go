@@ -1,8 +1,9 @@
 package listeners
 
 import (
+	"bytes"
+	"encoding/gob"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -15,94 +16,141 @@ import (
 	"github.com/vedadiyan/iceberg/internal/router"
 )
 
-func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
-	if HandleCORS(conf, w, r) {
-		return
-	}
-	requestId := uuid.NewString()
-	r.Header.Add("X-Request-Id", requestId)
-	logger.Info("handling request", r.URL.String(), r.Method)
+type (
+	Func          func() (bool, error)
+	StepFunctions []Func
+)
 
-	logger.Info("handling connect filters")
-	err := filters.HandleFilter(r, conf.Filters, filters.CONNECT)
-	if err != nil {
-		logger.Error(err, "connect filter failed")
-		if handlerError, ok := err.(common.HandlerError); ok {
-			w.WriteHeader(handlerError.StatusCode)
-			w.Write([]byte(handlerError.Message))
-			return
-		}
-		w.WriteHeader(418)
-		return
-	}
-
-	if conf.Cache != nil {
-		res, err := conf.Cache.Get(rv, r)
+func (stepFunctions StepFunctions) Run() error {
+	for _, fn := range stepFunctions {
+		cont, err := fn()
 		if err != nil {
-			logger.Error(err, "cache failed")
-			if handlerError, ok := err.(common.HandlerError); ok {
-				w.WriteHeader(handlerError.StatusCode)
-				w.Write([]byte(handlerError.Message))
-				return
+			return err
+		}
+		if !cont {
+			break
+		}
+	}
+	return nil
+}
+
+func HandleFilters(conf *conf.Conf, r *http.Request, level filters.Level) Func {
+	return func() (bool, error) {
+		err := filters.HandleFilter(r, conf.Filters, level)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+}
+
+func GetCache(conf *conf.Conf, w http.ResponseWriter, key string) Func {
+	return func() (bool, error) {
+		res, err := conf.Cache.Get(key)
+		if err != nil {
+			return false, err
+		}
+		if res != nil {
+			var r http.Request
+			err := gob.NewDecoder(bytes.NewBuffer(res)).Decode(&r)
+			if err != nil {
+				return false, err
 			}
-			w.WriteHeader(418)
-			return
+			_, err = Finalizer(w, &r)()
+			if err != nil {
+				return false, err
+			}
 		}
-		w.WriteHeader(200)
-		w.Write(res)
+		return true, nil
+	}
+}
+
+func SetCache(conf *conf.Conf, key string, r *http.Request) Func {
+	return func() (bool, error) {
+		var out bytes.Buffer
+		err := gob.NewEncoder(&out).Encode(*r)
+		if err != nil {
+			return false, err
+		}
+		conf.Cache.Set(key, out.Bytes())
+		return true, nil
+	}
+}
+
+func HandleProxy(conf *conf.Conf, r *http.Request, requestId string) Func {
+	return func() (bool, error) {
+		url := *r.URL
+		r, err := filters.RequestFrom(httpProxy(r, conf.Backend))
+		if err != nil {
+			return false, err
+		}
+		r.URL = &url
+		r.Header.Add("X-Request-Id", requestId)
+		return true, nil
+	}
+}
+
+func Finalizer(w http.ResponseWriter, r *http.Request) Func {
+	return func() (bool, error) {
+		clone, err := filters.CloneRequest(r)
+		if err != nil {
+			return false, err
+		}
+		for key, values := range clone.Header {
+			for _, value := range values {
+				w.Header().Add(key, value)
+			}
+		}
+		body, err := io.ReadAll(clone.Body)
+		if err != nil {
+			return false, err
+		}
+		_, err = w.Write(body)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+}
+
+func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
+	var key string
+	var requestId string
+	init := func() (bool, error) {
+		requestId = uuid.NewString()
+		r.Header.Add("X-Request-Id", requestId)
+		clone, err := filters.CloneRequest(r)
+		if err != nil {
+			return false, err
+		}
+		_key, err := conf.Cache.Key(rv, clone)
+		if err != nil {
+			return false, err
+		}
+		key = _key
+		return true, nil
+	}
+	stepFunctions := StepFunctions{
+		HandleCORS(conf, w, r),
+		init,
+		HandleFilters(conf, r, filters.CONNECT),
+		GetCache(conf, w, key),
+		HandleFilters(conf, r, filters.REQUEST),
+		HandleProxy(conf, r, requestId),
+		HandleFilters(conf, r, filters.RESPONSE),
+		Finalizer(w, r),
+		SetCache(conf, key, r),
 	}
 
-	logger.Info("handling request filters")
-	err = filters.HandleFilter(r, conf.Filters, filters.REQUEST)
+	err := stepFunctions.Run()
 	if err != nil {
-		logger.Error(err, "request filter failed")
 		if handlerError, ok := err.(common.HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
 			w.Write([]byte(handlerError.Message))
 			return
 		}
 		w.WriteHeader(418)
-		return
 	}
-	logger.Info("handling proxy")
-	url := *r.URL
-	r, err = filters.RequestFrom(httpProxy(r, conf.Backend))
-	if err != nil {
-		logger.Error(err, "")
-		w.WriteHeader(502)
-		return
-	}
-	r.URL = &url
-	r.Header.Add("X-Request-Id", requestId)
-	log.Println("handling response filters")
-	err = filters.HandleFilter(r, conf.Filters, filters.RESPONSE)
-	if err != nil {
-		logger.Error(err, "response filter failed")
-		if handlerError, ok := err.(common.HandlerError); ok {
-			w.WriteHeader(handlerError.StatusCode)
-			w.Write([]byte(handlerError.Message))
-			return
-		}
-		w.WriteHeader(418)
-		return
-	}
-	for key, values := range r.Header {
-		for _, value := range values {
-			w.Header().Add(key, value)
-		}
-	}
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		w.WriteHeader(500)
-		return
-	}
-	if conf.Cache != nil {
-		err := conf.Cache.Set(rv, r, body)
-		if err != nil {
-			logger.Error(err, "cache  failed")
-		}
-	}
-	w.Write(body)
 }
 
 func httpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {

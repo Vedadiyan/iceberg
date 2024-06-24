@@ -30,7 +30,7 @@ var (
 )
 
 func WebSocketHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request) {
-	if HandleCORS(conf, w, r) {
+	if cont, _ := HandleCORS(conf, w, r)(); !cont {
 		return
 	}
 	err := filters.HandleFilter(r, conf.Filters, filters.CONNECT)

@@ -11,8 +11,9 @@ import (
 
 type (
 	Cache interface {
-		Get(rv map[string]string, r *http.Request) ([]byte, error)
-		Set(rv map[string]string, r *http.Request, value []byte) error
+		Get(key string) ([]byte, error)
+		Set(key string, value []byte) error
+		Key(rv map[string]string, r *http.Request) (string, error)
 	}
 	KeyParams struct {
 		Route []string
