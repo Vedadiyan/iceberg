@@ -141,7 +141,7 @@ func Finalize(w http.ResponseWriter, r *http.Request) Func {
 func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
 	var key string
 	var requestId string
-	stepFunctions := StepFunctions{
+	err := StepFunctions{
 		HandleCORS(conf, w, r),
 		Initialize(conf, r, rv, &requestId, &key),
 		Intercept(conf, r, filters.CONNECT),
@@ -151,8 +151,7 @@ func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv rou
 		Intercept(conf, r, filters.RESPONSE),
 		Finalize(w, r),
 		SetCache(conf, key, r),
-	}
-	err := stepFunctions.Run()
+	}.Run()
 	if err != nil {
 		if handlerError, ok := err.(common.HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
