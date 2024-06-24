@@ -38,11 +38,11 @@ func Initializer(conf *conf.Conf, r *http.Request, rv router.RouteValues, reques
 	return func() (bool, error) {
 		*requestId = uuid.NewString()
 		r.Header.Add("X-Request-Id", *requestId)
-		clone, err := filters.CloneRequest(r)
-		if err != nil {
-			return false, err
-		}
 		if conf.Cache != nil {
+			clone, err := filters.CloneRequest(r)
+			if err != nil {
+				return false, err
+			}
 			_key, err := conf.Cache.Key(rv, clone)
 			if err != nil {
 				return false, err
