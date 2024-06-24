@@ -118,6 +118,7 @@ func (c *Connection) Proxy(requestId string) Func {
 		}
 		r.URL = &url
 		r.Header.Add("X-Request-Id", requestId)
+		c.r = r
 		return true, nil
 	}
 }
