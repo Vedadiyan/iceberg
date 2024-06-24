@@ -141,7 +141,6 @@ func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv rou
 		Finalizer(w, r),
 		SetCache(conf, key, r),
 	}
-
 	err := stepFunctions.Run()
 	if err != nil {
 		if handlerError, ok := err.(common.HandlerError); ok {
