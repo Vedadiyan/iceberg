@@ -46,6 +46,9 @@ func HandleFilters(conf *conf.Conf, r *http.Request, level filters.Level) Func {
 
 func GetCache(conf *conf.Conf, w http.ResponseWriter, key string) Func {
 	return func() (bool, error) {
+		if conf.Cache == nil {
+			return true, nil
+		}
 		res, err := conf.Cache.Get(key)
 		if err != nil {
 			return false, err
@@ -67,6 +70,9 @@ func GetCache(conf *conf.Conf, w http.ResponseWriter, key string) Func {
 
 func SetCache(conf *conf.Conf, key string, r *http.Request) Func {
 	return func() (bool, error) {
+		if conf.Cache == nil {
+			return true, nil
+		}
 		var out bytes.Buffer
 		err := gob.NewEncoder(&out).Encode(*r)
 		if err != nil {
