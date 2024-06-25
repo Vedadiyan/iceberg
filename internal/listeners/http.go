@@ -2,13 +2,13 @@ package listeners
 
 import (
 	"bytes"
-	"encoding/gob"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/vedadiyan/iceberg/internal/caches"
 	"github.com/vedadiyan/iceberg/internal/common"
 	"github.com/vedadiyan/iceberg/internal/conf"
 	"github.com/vedadiyan/iceberg/internal/filters"
@@ -82,11 +82,12 @@ func (c *Connection) GetCache() Func {
 			return false, err
 		}
 		if res != nil {
-			var r http.Request
-			err := gob.NewDecoder(bytes.NewBuffer(res)).Decode(&r)
+			res, err := caches.Unmarshal(res)
 			if err != nil {
 				return false, err
 			}
+			c.request.Header = res.Header
+			c.request.Body = io.NopCloser(bytes.NewBuffer(res.Body))
 			_, err = c.Finalize()()
 			if err != nil {
 				return false, err
@@ -101,12 +102,11 @@ func (c *Connection) SetCache() Func {
 		if c.conf.Cache == nil {
 			return true, nil
 		}
-		var out bytes.Buffer
-		err := gob.NewEncoder(&out).Encode(*c.request)
+		out, err := caches.Marshal(c.request)
 		if err != nil {
 			return false, err
 		}
-		c.conf.Cache.Set(c.key, out.Bytes())
+		c.conf.Cache.Set(c.key, out)
 		return true, nil
 	}
 }
