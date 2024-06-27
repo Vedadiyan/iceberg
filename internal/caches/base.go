@@ -38,7 +38,7 @@ func (keyParams *KeyParams) GetKey(rv map[string]string, r *http.Request) (strin
 	buffer := bytes.NewBufferString(fmt.Sprintf("%s__%s__", keyParams.BaseKey, r.Method))
 
 	for _, key := range keyParams.Static {
-		buffer.WriteString(fmt.Sprintf("$s__", key))
+		buffer.WriteString(fmt.Sprintf("%s__", key))
 	}
 
 	for _, key := range keyParams.Route {
