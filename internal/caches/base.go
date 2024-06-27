@@ -18,6 +18,7 @@ type (
 	}
 	KeyParams struct {
 		BaseKey string
+		Static  []string
 		Route   []string
 		Query   []string
 		Body    bool
@@ -34,7 +35,12 @@ func init() {
 }
 
 func (keyParams *KeyParams) GetKey(rv map[string]string, r *http.Request) (string, error) {
-	buffer := bytes.NewBufferString(fmt.Sprintf("%s__", keyParams.BaseKey))
+	buffer := bytes.NewBufferString(fmt.Sprintf("%s__%s__", keyParams.BaseKey, r.Method))
+
+	for _, key := range keyParams.Static {
+		buffer.WriteString(fmt.Sprintf("$s__", key))
+	}
+
 	for _, key := range keyParams.Route {
 		value, ok := rv[key]
 		if !ok {

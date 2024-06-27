@@ -61,9 +61,10 @@ type (
 	CacheV1 struct {
 		Repository string `yaml:"repository"`
 		KeyParams  struct {
-			Route []string `yaml:"route"`
-			Query []string `yaml:"query"`
-			Body  bool     `yaml:"body"`
+			Static []string `yaml:"static"`
+			Route  []string `yaml:"route"`
+			Query  []string `yaml:"query"`
+			Body   bool     `yaml:"body"`
 		} `yaml:"keyParams"`
 	}
 	CallbackV1 struct {
@@ -443,6 +444,7 @@ func BuildJetStream(appName string, cache *CacheV1, url *url.URL) (caches.Cache,
 	}
 	natsFilter.KeyParams = caches.KeyParams{}
 	natsFilter.KeyParams.BaseKey = appName
+	natsFilter.KeyParams.Static = cache.KeyParams.Static
 	natsFilter.KeyParams.Route = cache.KeyParams.Route
 	natsFilter.KeyParams.Query = cache.KeyParams.Query
 	natsFilter.KeyParams.Body = cache.KeyParams.Body
