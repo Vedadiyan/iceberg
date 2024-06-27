@@ -38,7 +38,7 @@ type (
 		Name         string          `yaml:"name"`
 		Frontend     string          `yaml:"frontend"`
 		Backend      string          `yaml:"backend"`
-		Cache        *CacheV1        `yaml:"cahce"`
+		Cache        *CacheV1        `yaml:"cache"`
 		FilterChains []FilterChainV1 `yaml:"filterChains"`
 	}
 	FilterChainV1 struct {
@@ -291,7 +291,7 @@ func BuildCacheV1(appName string, cache *CacheV1) (caches.Cache, error) {
 		return nil, err
 	}
 	switch strings.ToLower(url.Scheme) {
-	case "jetsream":
+	case "jetstream":
 		{
 			return BuildJetStream(appName, cache, url)
 		}

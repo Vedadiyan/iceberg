@@ -52,7 +52,7 @@ func (keyParams *KeyParams) GetKey(rv map[string]string, r *http.Request) (strin
 	for _, key := range keyParams.Query {
 		value := r.URL.Query().Get(key)
 		if len(value) == 0 {
-			return "", fmt.Errorf("key not found")
+			continue
 		}
 		buffer.WriteString(fmt.Sprintf("%s:%s__", key, value))
 	}

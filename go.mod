@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/websocket v1.5.1
 	github.com/nats-io/nats.go v1.35.0
-	github.com/vedadiyan/goal v0.2.11
+	github.com/vedadiyan/goal v0.3.8
 	github.com/vedadiyan/nats-helpers v0.0.3
 	google.golang.org/grpc v1.61.1
 	gopkg.in/yaml.v3 v3.0.1

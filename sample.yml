@@ -11,14 +11,15 @@ spec:
       maxAge: ""
   resources:
     - name: freeze
-      frontend: /
+      frontend: /:id
       backend: http://127.0.0.1:8080
       cache: 
-        repository: "nats://[[default_nats]]/bucket/30s"
+        repository: "jetstream://[[default_nats]]/bucket/30s"
         keyParams:
-          path: 
-            - a
-            - b
+          static: 
+            - TEST
+          route: 
+            - id
           query: 
             - a
             - b
@@ -26,28 +27,9 @@ spec:
       filterChains: 
         - name: payment-intent
           listener: "nats://[[default_nats]]/tests.a"
-          level: "request"
+          level: "response"
           timeout: 30
-          durable: true
           exchange: 
             headers: 
-              - x-payment-token
-          callbacks: 
-            - name: generate-receipt
-              listener: "nats://[[default_nats]]/tests.b"
-              parallel: true
-              durable: true
-              timeout: 30
-            - name: generate-receipt-2
-              listener: "nats://[[default_nats]]/tests.c"
-              parallel: true
-              durable: true
-              timeout: 30
-            - name: generate-receipt-3
-              listener: "nats://[[default_nats]]/tests.d"
-              parallel: false
-              durable: true
-              timeout: 30              
-              await: 
-                - generate-receipt
-                - generate-receipt-2
+              - x-test-header
+            body: true

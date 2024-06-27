@@ -15,10 +15,10 @@ func HandleCORS(conf *conf.Conf, w http.ResponseWriter, r *http.Request) Func {
 				w.Header().Add("access-control-max-age", conf.CORS.MaxAge)
 				w.Header().Add("access-control-allow-methods", conf.CORS.Methods)
 				w.WriteHeader(200)
-				return true, nil
+				return false, nil
 			}
 			w.Header().Add("Access-Control-Expose-Headers", conf.CORS.ExposeHeader)
 		}
-		return false, nil
+		return true, nil
 	}
 }

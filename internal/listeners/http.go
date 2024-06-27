@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/nats-io/nats.go"
 	"github.com/vedadiyan/iceberg/internal/caches"
 	"github.com/vedadiyan/iceberg/internal/common"
 	"github.com/vedadiyan/iceberg/internal/conf"
@@ -78,6 +79,9 @@ func (c *Connection) GetCache() Func {
 			return true, nil
 		}
 		res, err := c.conf.Cache.Get(c.key)
+		if err == nats.ErrKeyNotFound {
+			return true, nil
+		}
 		if err != nil {
 			return false, err
 		}
@@ -92,6 +96,7 @@ func (c *Connection) GetCache() Func {
 			if err != nil {
 				return false, err
 			}
+			return false, nil
 		}
 		return true, nil
 	}
@@ -132,6 +137,9 @@ func (c *Connection) Finalize() Func {
 			return false, err
 		}
 		for key, values := range clone.Header {
+			if strings.ToLower(key) == "content-length" {
+				continue
+			}
 			for _, value := range values {
 				c.responseWriter.Header().Add(key, value)
 			}
