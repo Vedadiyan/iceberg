@@ -17,9 +17,10 @@ type (
 		Key(rv map[string]string, r *http.Request) (string, error)
 	}
 	KeyParams struct {
-		Route []string
-		Query []string
-		Body  bool
+		BaseKey string
+		Route   []string
+		Query   []string
+		Body    bool
 	}
 	Response struct {
 		Header http.Header
@@ -33,16 +34,13 @@ func init() {
 }
 
 func (keyParams *KeyParams) GetKey(rv map[string]string, r *http.Request) (string, error) {
-	buffer := bytes.NewBufferString("")
+	buffer := bytes.NewBufferString(fmt.Sprintf("%s__", keyParams.BaseKey))
 	for _, key := range keyParams.Route {
 		value, ok := rv[key]
 		if !ok {
 			return "", fmt.Errorf("key not found")
 		}
-		buffer.WriteString(key)
-		buffer.WriteString(":")
-		buffer.WriteString(value)
-		buffer.WriteString("\r\n")
+		buffer.WriteString(fmt.Sprintf("%s:%s__", key, value))
 	}
 
 	for _, key := range keyParams.Query {
@@ -50,10 +48,7 @@ func (keyParams *KeyParams) GetKey(rv map[string]string, r *http.Request) (strin
 		if len(value) == 0 {
 			return "", fmt.Errorf("key not found")
 		}
-		buffer.WriteString(key)
-		buffer.WriteString(":")
-		buffer.WriteString(value)
-		buffer.WriteString("\r\n")
+		buffer.WriteString(fmt.Sprintf("%s:%s__", key, value))
 	}
 
 	if keyParams.Body {

@@ -442,6 +442,7 @@ func BuildJetStream(appName string, cache *CacheV1, url *url.URL) (caches.Cache,
 		natsFilter.TTL = 0
 	}
 	natsFilter.KeyParams = caches.KeyParams{}
+	natsFilter.KeyParams.BaseKey = appName
 	natsFilter.KeyParams.Route = cache.KeyParams.Route
 	natsFilter.KeyParams.Query = cache.KeyParams.Query
 	natsFilter.KeyParams.Body = cache.KeyParams.Body
