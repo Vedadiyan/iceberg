@@ -44,20 +44,29 @@ func (stepFunctions StepFunctions) Run() error {
 	return nil
 }
 
+func (c *Connection) InitializeCache() error {
+	if c.conf.Cache == nil {
+		return nil
+	}
+	clone, err := filters.CloneRequest(c.request)
+	if err != nil {
+		return err
+	}
+	key, err := c.conf.Cache.Key(c.routeValues, clone)
+	if err != nil {
+		return err
+	}
+	c.key = key
+	return nil
+}
+
 func (c *Connection) Initialize() Func {
 	return func() (bool, error) {
 		c.requestId = uuid.NewString()
 		c.request.Header.Add("X-Request-Id", c.requestId)
-		if c.conf.Cache != nil {
-			clone, err := filters.CloneRequest(c.request)
-			if err != nil {
-				return false, err
-			}
-			key, err := c.conf.Cache.Key(c.routeValues, clone)
-			if err != nil {
-				return false, err
-			}
-			c.key = key
+		err := c.InitializeCache()
+		if err != nil {
+			return false, err
 		}
 		return true, nil
 	}
@@ -175,12 +184,11 @@ func HttpHandler(conf *common.Conf, w http.ResponseWriter, r *http.Request, rv r
 		connection.SetCache(),
 	}.Run()
 	if err != nil {
+		statusCode := 418
 		if handlerError, ok := err.(errors.HandlerError); ok {
-			w.WriteHeader(handlerError.StatusCode)
-			w.Write([]byte(handlerError.Message))
-			return
+			statusCode = handlerError.StatusCode
 		}
-		w.WriteHeader(418)
+		http.Error(w, err.Error(), statusCode)
 	}
 }
 

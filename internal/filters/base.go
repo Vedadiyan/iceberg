@@ -92,8 +92,9 @@ func CloneRequest(r *http.Request, options ...RequestOption) (*http.Request, err
 	if err != nil {
 		return nil, err
 	}
-	(*r).Body = io.NopCloser(bytes.NewBuffer(body))
-	(*r2).Body = io.NopCloser(bytes.NewBuffer(body))
+
+	(*r).Body = io.NopCloser(bytes.NewReader(body))
+	(*r2).Body = io.NopCloser(bytes.NewReader(body))
 	(*r2).URL.Host = request.Url.Host
 	(*r2).URL.Scheme = request.Url.Scheme
 	(*r2).Host = request.Url.Host
@@ -143,10 +144,10 @@ func (filter *FilterBase) MoveTo(res *http.Response, req *http.Request) error {
 	}
 	for _, header := range filter.ExchangeHeaders {
 		values := res.Header.Get(header)
-		req.Header.Del(header)
-		req.Header.Add(header, values)
+		req.Header.Set(header, values)
 	}
 	if filter.ExchangeBody {
+		req.Header.Del("Content-Length")
 		req.Body = res.Body
 	}
 	return nil
