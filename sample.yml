@@ -11,7 +11,7 @@ spec:
       maxAge: ""
   resources:
     - name: freeze
-      frontend: /:id
+      frontend: /ok/:id
       backend: http://127.0.0.1:8080
       cache: 
         repository: "jetstream://[[default_nats]]/bucket/30s"

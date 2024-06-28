@@ -7,13 +7,13 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/vedadiyan/iceberg/internal/common"
-	"github.com/vedadiyan/iceberg/internal/conf"
+	"github.com/vedadiyan/iceberg/internal/errors"
 	"github.com/vedadiyan/iceberg/internal/filters"
 )
 
 type (
 	WebSocketProxy struct {
-		Conf            *conf.Conf
+		Conf            *common.Conf
 		Conn            *websocket.Conn
 		ProxiedConn     *websocket.Conn
 		Request         *http.Request
@@ -29,13 +29,13 @@ var (
 	}
 )
 
-func WebSocketHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request) {
+func WebSocketHandler(conf *common.Conf, w http.ResponseWriter, r *http.Request) {
 	if cont, _ := HandleCORS(conf, w, r)(); !cont {
 		return
 	}
 	err := filters.HandleFilter(r, conf.Filters, filters.CONNECT)
 	if err != nil {
-		if handlerError, ok := err.(common.HandlerError); ok {
+		if handlerError, ok := err.(errors.HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
 			w.Write([]byte(handlerError.Message))
 			return
@@ -65,8 +65,8 @@ func (wsp *WebSocketProxy) RequestHandler() {
 		}
 		message, err := io.ReadAll(data)
 		if err != nil {
-			wsp.Conn.WriteJSON(common.HandlerError{
-				Class:      common.HANDLER_ERROR_INTERNAL,
+			wsp.Conn.WriteJSON(errors.HandlerError{
+				Class:      errors.HANDLER_ERROR_INTERNAL,
 				StatusCode: 500,
 				Message:    err.Error(),
 			})
@@ -74,8 +74,8 @@ func (wsp *WebSocketProxy) RequestHandler() {
 		}
 		req, err := filters.CloneRequest(wsp.Request)
 		if err != nil {
-			wsp.Conn.WriteJSON(common.HandlerError{
-				Class:      common.HANDLER_ERROR_INTERNAL,
+			wsp.Conn.WriteJSON(errors.HandlerError{
+				Class:      errors.HANDLER_ERROR_INTERNAL,
 				StatusCode: 500,
 				Message:    err.Error(),
 			})
@@ -84,19 +84,19 @@ func (wsp *WebSocketProxy) RequestHandler() {
 		req.Body = io.NopCloser(bytes.NewBuffer(message))
 		err = filters.HandleFilter(req, wsp.Conf.Filters, filters.REQUEST)
 		if err != nil {
-			if handlerError, ok := err.(common.HandlerError); ok {
+			if handlerError, ok := err.(errors.HandlerError); ok {
 				wsp.Conn.WriteJSON(handlerError)
 				return
 			}
-			wsp.Conn.WriteJSON(common.HandlerError{
+			wsp.Conn.WriteJSON(errors.HandlerError{
 				StatusCode: 418,
 			})
 			return
 		}
 		err = wsp.ProxiedConn.WriteMessage(messageType, message)
 		if err != nil {
-			wsp.Conn.WriteJSON(common.HandlerError{
-				Class:      common.HANDLER_ERROR_PROXY,
+			wsp.Conn.WriteJSON(errors.HandlerError{
+				Class:      errors.HANDLER_ERROR_PROXY,
 				StatusCode: 500,
 				Message:    err.Error(),
 			})
@@ -117,8 +117,8 @@ func (wsp *WebSocketProxy) ResponseHandler() {
 		}
 		message, err := io.ReadAll(data)
 		if err != nil {
-			wsp.Conn.WriteJSON(common.HandlerError{
-				Class:      common.HANDLER_ERROR_INTERNAL,
+			wsp.Conn.WriteJSON(errors.HandlerError{
+				Class:      errors.HANDLER_ERROR_INTERNAL,
 				StatusCode: 500,
 				Message:    err.Error(),
 			})
@@ -126,8 +126,8 @@ func (wsp *WebSocketProxy) ResponseHandler() {
 		}
 		req, err := http.NewRequest("", "", bytes.NewBuffer(message))
 		if err != nil {
-			wsp.Conn.WriteJSON(common.HandlerError{
-				Class:      common.HANDLER_ERROR_INTERNAL,
+			wsp.Conn.WriteJSON(errors.HandlerError{
+				Class:      errors.HANDLER_ERROR_INTERNAL,
 				StatusCode: 500,
 				Message:    err.Error(),
 			})
@@ -135,19 +135,19 @@ func (wsp *WebSocketProxy) ResponseHandler() {
 		}
 		err = filters.HandleFilter(req, wsp.Conf.Filters, filters.RESPONSE)
 		if err != nil {
-			if handlerError, ok := err.(common.HandlerError); ok {
+			if handlerError, ok := err.(errors.HandlerError); ok {
 				wsp.Conn.WriteJSON(handlerError)
 				continue
 			}
-			wsp.Conn.WriteJSON(common.HandlerError{
+			wsp.Conn.WriteJSON(errors.HandlerError{
 				StatusCode: 418,
 			})
 			continue
 		}
 		message, err = io.ReadAll(req.Body)
 		if err != nil {
-			wsp.Conn.WriteJSON(common.HandlerError{
-				Class:      common.HANDLER_ERROR_INTERNAL,
+			wsp.Conn.WriteJSON(errors.HandlerError{
+				Class:      errors.HANDLER_ERROR_INTERNAL,
 				StatusCode: 500,
 				Message:    err.Error(),
 			})
@@ -155,8 +155,8 @@ func (wsp *WebSocketProxy) ResponseHandler() {
 		}
 		err = wsp.Conn.WriteMessage(messageType, message)
 		if err != nil {
-			wsp.Conn.WriteJSON(common.HandlerError{
-				Class:      common.HANDLER_ERROR_INTERNAL,
+			wsp.Conn.WriteJSON(errors.HandlerError{
+				Class:      errors.HANDLER_ERROR_INTERNAL,
 				StatusCode: 500,
 				Message:    err.Error(),
 			})
@@ -165,7 +165,7 @@ func (wsp *WebSocketProxy) ResponseHandler() {
 	}
 }
 
-func NewWebSocketProxy(conf *conf.Conf, w http.ResponseWriter, r *http.Request) (*WebSocketProxy, error) {
+func NewWebSocketProxy(conf *common.Conf, w http.ResponseWriter, r *http.Request) (*WebSocketProxy, error) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return nil, err

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/vedadiyan/iceberg/internal/common"
+	"github.com/vedadiyan/iceberg/internal/errors"
 )
 
 type (
@@ -172,7 +172,7 @@ func HandleFilter(r *http.Request, filters []Filter, level Level) error {
 func handlerFunc(filter Filter, r *http.Request) error {
 	res, err := filter.HandleSync(r)
 	if err != nil {
-		return common.NewHandlerError(common.HANDLER_ERROR_INTERNAL, 500, err.Error())
+		return errors.NewHandlerError(errors.HANDLER_ERROR_INTERNAL, 500, err.Error())
 	}
 	if res == nil {
 		return nil
@@ -186,7 +186,7 @@ func handlerFunc(filter Filter, r *http.Request) error {
 		status = 418
 	}
 	if statusStr != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
-		return common.NewHandlerError(common.HANDLER_ERROR_FILTER, status, res.Status)
+		return errors.NewHandlerError(errors.HANDLER_ERROR_FILTER, status, res.Status)
 	}
 	err = filter.MoveTo(res, r)
 	if err != nil {

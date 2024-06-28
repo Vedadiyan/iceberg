@@ -3,10 +3,10 @@ package listeners
 import (
 	"net/http"
 
-	"github.com/vedadiyan/iceberg/internal/conf"
+	"github.com/vedadiyan/iceberg/internal/common"
 )
 
-func HandleCORS(conf *conf.Conf, w http.ResponseWriter, r *http.Request) Func {
+func HandleCORS(conf *common.Conf, w http.ResponseWriter, r *http.Request) Func {
 	return func() (bool, error) {
 		if conf.CORS != nil {
 			if r.Method == "OPTIONS" {

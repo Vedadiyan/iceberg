@@ -11,7 +11,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/vedadiyan/iceberg/internal/caches"
 	"github.com/vedadiyan/iceberg/internal/common"
-	"github.com/vedadiyan/iceberg/internal/conf"
+	"github.com/vedadiyan/iceberg/internal/errors"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/logger"
 	"github.com/vedadiyan/iceberg/internal/router"
@@ -22,7 +22,7 @@ type (
 	StepFunctions []Func
 
 	Connection struct {
-		conf           *conf.Conf
+		conf           *common.Conf
 		responseWriter http.ResponseWriter
 		request        *http.Request
 		routeValues    router.RouteValues
@@ -156,7 +156,7 @@ func (c *Connection) Finalize() Func {
 	}
 }
 
-func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
+func HttpHandler(conf *common.Conf, w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
 	connection := Connection{
 		conf:           conf,
 		responseWriter: w,
@@ -175,7 +175,7 @@ func HttpHandler(conf *conf.Conf, w http.ResponseWriter, r *http.Request, rv rou
 		connection.SetCache(),
 	}.Run()
 	if err != nil {
-		if handlerError, ok := err.(common.HandlerError); ok {
+		if handlerError, ok := err.(errors.HandlerError); ok {
 			w.WriteHeader(handlerError.StatusCode)
 			w.Write([]byte(handlerError.Message))
 			return
@@ -199,10 +199,10 @@ func httpProxy(r *http.Request, backend *url.URL) (*http.Response, error) {
 		r, err := io.ReadAll(res.Body)
 		if err != nil {
 			logger.Error(err, "proxy failed", res.StatusCode, "unknown")
-			return nil, common.NewHandlerError(common.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
+			return nil, errors.NewHandlerError(errors.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
 		}
 		logger.Error(err, "proxy failed", res.StatusCode, string(r))
-		return nil, common.NewHandlerError(common.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
+		return nil, errors.NewHandlerError(errors.HANDLER_ERROR_PROXY, res.StatusCode, res.Status)
 	}
 	return res, nil
 }

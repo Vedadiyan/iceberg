@@ -1,35 +1,28 @@
 package common
 
 import (
-	"fmt"
 	"net/http"
+	"net/url"
+
+	"github.com/vedadiyan/iceberg/internal/caches"
+	"github.com/vedadiyan/iceberg/internal/filters"
 )
 
 type (
-	Handler           func(*http.ServeMux)
-	HandlerErrorClass int
-	HandlerError      struct {
-		Class      HandlerErrorClass
-		StatusCode int
-		Message    string
+	Handler func(*http.ServeMux)
+	Conf    struct {
+		Frontend *url.URL
+		Backend  *url.URL
+		Filters  []filters.Filter
+		CORS     *CORS
+		Cache    caches.Cache
+	}
+
+	CORS struct {
+		Origins      string
+		Headers      string
+		Methods      string
+		ExposeHeader string
+		MaxAge       string
 	}
 )
-
-const (
-	HANDLER_ERROR_INTERNAL HandlerErrorClass = 0
-	HANDLER_ERROR_FILTER   HandlerErrorClass = 1
-	HANDLER_ERROR_PROXY    HandlerErrorClass = 2
-)
-
-func (handlerError HandlerError) Error() string {
-	return fmt.Sprintf("%d: %s", handlerError.Class, handlerError.Message)
-}
-
-func NewHandlerError(class HandlerErrorClass, statusCode int, message string) error {
-	handlerError := HandlerError{
-		Class:      class,
-		Message:    message,
-		StatusCode: statusCode,
-	}
-	return handlerError
-}
