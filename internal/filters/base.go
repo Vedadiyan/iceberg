@@ -185,7 +185,7 @@ func handlerFunc(filter Filter, r *http.Request) error {
 	if err != nil {
 		status = 418
 	}
-	if statusStr != "200" && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
+	if !isSuccess(status) && strings.ToLower(res.Header.Get(string(HEADER_CONTINUE_ON_ERROR))) != "true" {
 		return errors.NewHandlerError(errors.HANDLER_ERROR_FILTER, status, res.Status)
 	}
 	err = filter.MoveTo(res, r)
@@ -193,4 +193,8 @@ func handlerFunc(filter Filter, r *http.Request) error {
 		return err
 	}
 	return nil
+}
+
+func isSuccess(statusCode int) bool {
+	return statusCode < 400
 }
