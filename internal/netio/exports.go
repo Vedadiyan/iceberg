@@ -30,14 +30,14 @@ func Cascade(i *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 		mut sync.RWMutex
 	)
 	tasks := make(map[string]<-chan *Response)
-
+	ctx := make(map[string]context.Context)
 	for _, c := range callers {
-		err := await(c, &mut, tasks, i, o)
+		err := await(c, &mut, ctx, tasks, i, o)
 		if err != nil {
 			return nil, err
 		}
 		if c.GetIsParallel() {
-			spin(c, &mut, tasks, i)
+			spin(c, &mut, ctx, tasks, i)
 			continue
 		}
 		r, err := c.Call(c.GetContext(), i.CloneRequest)
@@ -63,17 +63,17 @@ func Cascade(i *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 	return o, nil
 }
 
-func await(c Caller, m *sync.RWMutex, t map[string]<-chan *Response, i *ShadowRequest, o *ShadowResponse) error {
-	if len(c.GetAwaitList()) != 0 {
-		for _, task := range c.GetAwaitList() {
+func await(cal Caller, mute *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest, out *ShadowResponse) error {
+	if len(cal.GetAwaitList()) != 0 {
+		for _, task := range cal.GetAwaitList() {
 			var err error
-			m.RLocker()
-			ch, ok := t[task]
-			m.RUnlock()
-			if !ok {
+			mute.RLocker()
+			ch, chFound := tsks[task]
+			ctx, ctxFound := ctxs[task]
+			mute.RUnlock()
+			if !chFound || !ctxFound {
 				return fmt.Errorf("task not found")
 			}
-			ctx := c.GetContext()
 			var cr *Response
 			select {
 			case cr = <-ch:
@@ -90,32 +90,33 @@ func await(c Caller, m *sync.RWMutex, t map[string]<-chan *Response, i *ShadowRe
 			if cr.error != nil {
 				return cr.error
 			}
-			o, err = createOrUpdateResponse(o, cr.Response, c.GetResponseUpdaters())
+			out, err = createOrUpdateResponse(out, cr.Response, cal.GetResponseUpdaters())
 			if err != nil {
 				return err
 			}
-			tmp, err := o.CreateRequest()
+			tmp, err := out.CreateRequest()
 			if err != nil {
 				return err
 			}
 
-			err = UpdateRequest(i, tmp.Request, c.GetRequestUpdaters())
+			err = UpdateRequest(in, tmp.Request, cal.GetRequestUpdaters())
 			if err != nil {
 				return err
 			}
-			i.Reset()
+			in.Reset()
 		}
 	}
 	return nil
 }
 
-func spin(c Caller, m *sync.RWMutex, t map[string]<-chan *Response, i *ShadowRequest) {
+func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest) {
 	go func() {
 		ch := make(chan *Response, 1)
-		m.Lock()
-		t[c.GetName()] = ch
-		m.Unlock()
-		r, err := c.Call(c.GetContext(), i.CloneRequest)
+		mut.Lock()
+		tsks[cal.GetName()] = ch
+		ctxs[cal.GetName()] = cal.GetContext()
+		mut.Unlock()
+		r, err := cal.Call(cal.GetContext(), in.CloneRequest)
 		if err != nil {
 			ch <- &Response{
 				error: err,
