@@ -24,43 +24,43 @@ type (
 	}
 )
 
-func Cascade(i *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
+func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 	var (
-		o   *ShadowResponse
+		out *ShadowResponse
 		mut sync.RWMutex
 	)
 	tasks := make(map[string]<-chan *Response)
 	ctx := make(map[string]context.Context)
-	for _, c := range callers {
-		err := await(c, &mut, ctx, tasks, i, o)
+	for _, cal := range callers {
+		err := await(cal, &mut, ctx, tasks, in, out)
 		if err != nil {
 			return nil, err
 		}
-		if c.GetIsParallel() {
-			spin(c, &mut, ctx, tasks, i)
+		if cal.GetIsParallel() {
+			spin(cal, &mut, ctx, tasks, in)
 			continue
 		}
-		r, err := c.Call(c.GetContext(), i.CloneRequest)
+		res, err := cal.Call(cal.GetContext(), in.CloneRequest)
 		if err != nil {
 			return nil, err
 		}
-		o, err = createOrUpdateResponse(o, r, c.GetResponseUpdaters())
+		out, err = createOrUpdateResponse(out, res, cal.GetResponseUpdaters())
 		if err != nil {
 			return nil, err
 		}
-		tmp, err := o.CreateRequest()
+		tmp, err := out.CreateRequest()
 		if err != nil {
 			return nil, err
 		}
 
-		err = UpdateRequest(i, tmp.Request, c.GetRequestUpdaters())
+		err = UpdateRequest(in, tmp.Request, cal.GetRequestUpdaters())
 		if err != nil {
 			return nil, err
 		}
-		i.Reset()
+		in.Reset()
 	}
-	o.Reset()
-	return o, nil
+	out.Reset()
+	return out, nil
 }
 
 func await(cal Caller, mute *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest, out *ShadowResponse) error {
