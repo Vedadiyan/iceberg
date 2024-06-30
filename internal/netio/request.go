@@ -2,6 +2,7 @@ package netio
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 	"net/url"
@@ -21,6 +22,12 @@ func WithUrl(url *url.URL) RequestOption {
 		(*r).URL.Host = url.Host
 		(*r).URL.Scheme = url.Scheme
 		(*r).Host = url.Host
+	}
+}
+
+func WithContext(ctx context.Context) RequestOption {
+	return func(r *http.Request) {
+		*r = *r.WithContext(ctx)
 	}
 }
 

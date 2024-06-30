@@ -1,7 +1,9 @@
 package filters
 
 import (
+	"context"
 	"net/url"
+	"time"
 
 	"github.com/vedadiyan/iceberg/internal/netio"
 )
@@ -13,9 +15,9 @@ type (
 		Address   *url.URL
 		Level     Level
 		Parallel  bool
-		Timeout   int
+		Timeout   time.Duration
 		Filters   []Filter
-		AwaitList []string
+		AwaitList map[string]time.Duration
 
 		RequestUpdaters  []netio.RequestUpdater
 		ResponseUpdaters []netio.ResponseUpdater
@@ -47,12 +49,20 @@ func (f *Filter) GetName() string {
 	return f.Name
 }
 
-func (f *Filter) GetAwaitList() []string {
+func (f *Filter) GetAwaitList() map[string]time.Duration {
 	return f.AwaitList
 }
 
 func (f *Filter) GetIsParallel() bool {
 	return f.Parallel
+}
+
+func (f *Filter) GetContext() context.Context {
+	ctx, cancel := context.WithCancel(context.TODO())
+	time.AfterFunc(time.Until(time.Now().Add(f.Timeout)), func() {
+		cancel()
+	})
+	return ctx
 }
 
 func (f *Filter) SetExchangeHeaders(headers []string) {

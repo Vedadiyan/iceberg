@@ -1,9 +1,11 @@
 package netio
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type (
@@ -15,10 +17,11 @@ type (
 	Caller interface {
 		GetIsParallel() bool
 		GetName() string
-		GetAwaitList() []string
-		Call(Cloner) (*http.Response, error)
+		GetAwaitList() map[string]time.Duration
+		Call(context.Context, Cloner) (*http.Response, error)
 		GetRequestUpdaters() []RequestUpdater
 		GetResponseUpdaters() []ResponseUpdater
+		GetContext() context.Context
 	}
 )
 
@@ -38,7 +41,7 @@ func Cascade(i *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 			spin(c, &mut, tasks, i)
 			continue
 		}
-		r, err := c.Call(i.CloneRequest)
+		r, err := c.Call(c.GetContext(), i.CloneRequest)
 		if err != nil {
 			return nil, err
 		}
@@ -63,7 +66,7 @@ func Cascade(i *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 
 func await(c Caller, m *sync.RWMutex, t map[string]<-chan *Response, i *ShadowRequest, o *ShadowResponse) error {
 	if len(c.GetAwaitList()) != 0 {
-		for _, task := range c.GetAwaitList() {
+		for task, ttl := range c.GetAwaitList() {
 			var err error
 			m.RLocker()
 			ch, ok := t[task]
@@ -71,7 +74,21 @@ func await(c Caller, m *sync.RWMutex, t map[string]<-chan *Response, i *ShadowRe
 			if !ok {
 				return fmt.Errorf("task not found")
 			}
-			cr := <-ch
+			ctx, cancel := context.WithTimeout(context.TODO(), ttl)
+			var cr *Response
+			defer cancel()
+			select {
+			case cr = <-ch:
+				{
+					break
+				}
+			case <-ctx.Done():
+				{
+					cr = &Response{
+						error: context.DeadlineExceeded,
+					}
+				}
+			}
 			if cr.error != nil {
 				return cr.error
 			}
@@ -100,7 +117,7 @@ func spin(c Caller, m *sync.RWMutex, t map[string]<-chan *Response, i *ShadowReq
 		m.Lock()
 		t[c.GetName()] = ch
 		m.Unlock()
-		r, err := c.Call(i.CloneRequest)
+		r, err := c.Call(c.GetContext(), i.CloneRequest)
 		if err != nil {
 			ch <- &Response{
 				error: err,

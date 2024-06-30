@@ -1,6 +1,7 @@
 package filters
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/vedadiyan/iceberg/internal/netio"
@@ -18,8 +19,8 @@ func NewHttpFilter(f *Filter) *HttpFilter {
 	return httpFilter
 }
 
-func (f *HttpFilter) Call(c netio.Cloner) (*http.Response, error) {
-	r, err := c(netio.WithUrl(f.Address))
+func (f *HttpFilter) Call(ctx context.Context, c netio.Cloner) (*http.Response, error) {
+	r, err := c(netio.WithUrl(f.Address), netio.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
