@@ -129,15 +129,15 @@ func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks m
 	}()
 }
 
-func createOrUpdateResponse(shadowResponse *ShadowResponse, response *http.Response, updaters []ResponseUpdater) (*ShadowResponse, error) {
-	if shadowResponse == nil {
-		return NewShandowResponse(response)
+func createOrUpdateResponse(in *ShadowResponse, res *http.Response, updtr []ResponseUpdater) (*ShadowResponse, error) {
+	if in == nil {
+		return NewShandowResponse(res)
 
 	}
-	err := UpdateResponse(shadowResponse, response, updaters)
+	err := UpdateResponse(in, res, updtr)
 	if err != nil {
 		return nil, err
 	}
-	shadowResponse.Reset()
-	return shadowResponse, nil
+	in.Reset()
+	return in, nil
 }
