@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
-	"time"
 )
 
 type (
@@ -17,7 +16,7 @@ type (
 	Caller interface {
 		GetIsParallel() bool
 		GetName() string
-		GetAwaitList() map[string]time.Duration
+		GetAwaitList() []string
 		Call(context.Context, Cloner) (*http.Response, error)
 		GetRequestUpdaters() []RequestUpdater
 		GetResponseUpdaters() []ResponseUpdater
@@ -66,7 +65,7 @@ func Cascade(i *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 
 func await(c Caller, m *sync.RWMutex, t map[string]<-chan *Response, i *ShadowRequest, o *ShadowResponse) error {
 	if len(c.GetAwaitList()) != 0 {
-		for task, ttl := range c.GetAwaitList() {
+		for _, task := range c.GetAwaitList() {
 			var err error
 			m.RLocker()
 			ch, ok := t[task]
@@ -74,9 +73,8 @@ func await(c Caller, m *sync.RWMutex, t map[string]<-chan *Response, i *ShadowRe
 			if !ok {
 				return fmt.Errorf("task not found")
 			}
-			ctx, cancel := context.WithTimeout(context.TODO(), ttl)
+			ctx := c.GetContext()
 			var cr *Response
-			defer cancel()
 			select {
 			case cr = <-ch:
 				{

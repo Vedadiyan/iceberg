@@ -17,7 +17,7 @@ type (
 		Parallel  bool
 		Timeout   time.Duration
 		Filters   []Filter
-		AwaitList map[string]time.Duration
+		AwaitList []string
 
 		RequestUpdaters  []netio.RequestUpdater
 		ResponseUpdaters []netio.ResponseUpdater
@@ -49,7 +49,7 @@ func (f *Filter) GetName() string {
 	return f.Name
 }
 
-func (f *Filter) GetAwaitList() map[string]time.Duration {
+func (f *Filter) GetAwaitList() []string {
 	return f.AwaitList
 }
 
