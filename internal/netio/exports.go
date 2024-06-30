@@ -3,6 +3,7 @@ package netio
 import (
 	"fmt"
 	"net/http"
+	"sync"
 )
 
 type (
@@ -21,75 +22,95 @@ type (
 	}
 )
 
-func Cascade(r *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
-	var shadowResponse *ShadowResponse
-	var err error
+func Cascade(i *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
+	var (
+		o   *ShadowResponse
+		mut sync.RWMutex
+	)
 	tasks := make(map[string]<-chan *Response)
-	for _, caller := range callers {
-		if len(caller.GetAwaitList()) != 0 {
-			for _, task := range caller.GetAwaitList() {
-				ch, ok := tasks[task]
-				if !ok {
-					return nil, fmt.Errorf("task not found")
-				}
-				res := <-ch
-				if res.error != nil {
-					return nil, res.error
-				}
-				shadowResponse, err = createOrUpdateResponse(shadowResponse, res.Response, caller.GetResponseUpdaters())
-				if err != nil {
-					return nil, err
-				}
-				tmp, err := shadowResponse.CreateRequest()
-				if err != nil {
-					return nil, err
-				}
 
-				err = UpdateRequest(r, tmp.Request, caller.GetRequestUpdaters())
-				if err != nil {
-					return nil, err
-				}
-				r.Reset()
-			}
+	for _, c := range callers {
+		err := await(c, &mut, tasks, i, o)
+		if err != nil {
+			return nil, err
 		}
-
-		if caller.GetIsParallel() {
-			go func() {
-				ch := make(chan *Response, 1)
-				res, err := caller.Call(r.CloneRequest)
-				if err != nil {
-					ch <- &Response{
-						error: err,
-					}
-					return
-				}
-				ch <- &Response{
-					Response: res,
-				}
-			}()
+		if c.GetIsParallel() {
+			spin(c, &mut, tasks, i)
 			continue
 		}
-		res, err := caller.Call(r.CloneRequest)
+		r, err := c.Call(i.CloneRequest)
 		if err != nil {
 			return nil, err
 		}
-		shadowResponse, err = createOrUpdateResponse(shadowResponse, res, caller.GetResponseUpdaters())
+		o, err = createOrUpdateResponse(o, r, c.GetResponseUpdaters())
 		if err != nil {
 			return nil, err
 		}
-		tmp, err := shadowResponse.CreateRequest()
+		tmp, err := o.CreateRequest()
 		if err != nil {
 			return nil, err
 		}
 
-		err = UpdateRequest(r, tmp.Request, caller.GetRequestUpdaters())
+		err = UpdateRequest(i, tmp.Request, c.GetRequestUpdaters())
 		if err != nil {
 			return nil, err
 		}
-		r.Reset()
+		i.Reset()
 	}
-	shadowResponse.Reset()
-	return shadowResponse, nil
+	o.Reset()
+	return o, nil
+}
+
+func await(c Caller, m *sync.RWMutex, t map[string]<-chan *Response, i *ShadowRequest, o *ShadowResponse) error {
+	if len(c.GetAwaitList()) != 0 {
+		for _, task := range c.GetAwaitList() {
+			var err error
+			m.RLocker()
+			ch, ok := t[task]
+			m.RUnlock()
+			if !ok {
+				return fmt.Errorf("task not found")
+			}
+			cr := <-ch
+			if cr.error != nil {
+				return cr.error
+			}
+			o, err = createOrUpdateResponse(o, cr.Response, c.GetResponseUpdaters())
+			if err != nil {
+				return err
+			}
+			tmp, err := o.CreateRequest()
+			if err != nil {
+				return err
+			}
+
+			err = UpdateRequest(i, tmp.Request, c.GetRequestUpdaters())
+			if err != nil {
+				return err
+			}
+			i.Reset()
+		}
+	}
+	return nil
+}
+
+func spin(c Caller, m *sync.RWMutex, t map[string]<-chan *Response, i *ShadowRequest) {
+	go func() {
+		ch := make(chan *Response, 1)
+		m.Lock()
+		t[c.GetName()] = ch
+		m.Unlock()
+		r, err := c.Call(i.CloneRequest)
+		if err != nil {
+			ch <- &Response{
+				error: err,
+			}
+			return
+		}
+		ch <- &Response{
+			Response: r,
+		}
+	}()
 }
 
 func createOrUpdateResponse(shadowResponse *ShadowResponse, response *http.Response, updaters []ResponseUpdater) (*ShadowResponse, error) {
