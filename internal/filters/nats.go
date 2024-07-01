@@ -6,39 +6,81 @@ import (
 	"sync"
 
 	"github.com/nats-io/nats.go"
-	"github.com/vedadiyan/iceberg/internal/di"
 	"github.com/vedadiyan/iceberg/internal/netio"
+	natshelpers "github.com/vedadiyan/nats-helpers"
+	queue "github.com/vedadiyan/nats-helpers/queue"
 )
 
 type (
-	NATSFilter struct {
+	DurableNATSFilter struct {
 		*Filter
-		Durable bool
+		Host  string
+		queue *queue.Queue
+		conn  *nats.Conn
 	}
 )
 
-func (natsFilter *NATSFilter) Call(ctx context.Context, c netio.Cloner) (*http.Response, error) {
-	if !natsFilter.Durable {
-		return natsFilter.Simple()
+const (
+	DURABLE_CHANNEL = "$ICEBERG.DURABLE"
+)
+
+var (
+	_conns   map[string]*nats.Conn
+	_connMut sync.RWMutex
+)
+
+func init() {
+	_conns = make(map[string]*nats.Conn)
+}
+
+func GetConn(url string) (*nats.Conn, error) {
+	_connMut.Lock()
+	defer _connMut.Unlock()
+	if conn, ok := _conns[url]; ok {
+		return conn, nil
 	}
+	conn, err := nats.Connect(url)
+	if err != nil {
+		panic(err)
+	}
+	_ = conn
 	panic("")
 }
 
-func (natsFilter *NATSFilter) Simple() (*http.Response, error) {
+func NewDurableNATSFilter(f *Filter) (*DurableNATSFilter, error) {
+	conn, err := GetConn("")
+	if err != nil {
+		return nil, err
+	}
+	queue, err := queue.New(conn, []string{})
+	if err != nil {
+		return nil, err
+	}
+	queue.Pull(DURABLE_CHANNEL, func(m *nats.Msg) natshelpers.State {
+		clone := *m
+		clone.Subject = clone.Reply
+		clone.Reply = ""
+		err := conn.PublishMsg(&clone)
+		_ = err
+		return natshelpers.Done()
+	})
+	natsFilter := new(DurableNATSFilter)
+	natsFilter.Filter = f
+	natsFilter.conn = conn
+	natsFilter.queue = queue
+	return natsFilter, nil
+}
+
+func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cloner) (*http.Response, error) {
 	var (
 		res *http.Response
 		err error
 	)
-	conn, err := di.Resolve[*nats.Conn]()
-	if err != nil {
-		return nil, err
-	}
-	inbox := conn.NewRespInbox()
+	inbox := durableNATSFilter.conn.NewRespInbox()
 	var wg sync.WaitGroup
-	subs, err := conn.Subscribe(inbox, func(msg *nats.Msg) {
+	subs, err := durableNATSFilter.conn.Subscribe(inbox, func(msg *nats.Msg) {
 		go func() {
 			defer wg.Done()
-
 		}()
 	})
 	if err != nil {
@@ -48,7 +90,7 @@ func (natsFilter *NATSFilter) Simple() (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = conn.PublishMsg(&nats.Msg{})
+	err = durableNATSFilter.queue.PushMsg(&nats.Msg{})
 	if err != nil {
 		return nil, err
 	}
