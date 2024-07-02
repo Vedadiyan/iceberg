@@ -135,27 +135,7 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *h
 	if err != nil {
 		return netio.TERM, nil, err
 	}
-	req, err := c()
-	if err != nil {
-		return netio.TERM, nil, err
-	}
-	data, err := io.ReadAll(req.Body)
-	if err != nil {
-		return netio.TERM, nil, err
-	}
-	msg := &nats.Msg{
-		Subject: f.Subject,
-		Header:  nats.Header{},
-		Data:    data,
-	}
-	hdr := headers.Header(req.Header.Clone())
-	hdr.SetReflector(DURABLE_CHANNEL)
-	hdr.SetReply(inbox)
-	err = hdr.Export(msg.Header)
-	if err != nil {
-		return netio.TERM, nil, err
-	}
-	err = f.queue.PushMsg(msg)
+	err = f.Publish(inbox, c)
 	if err != nil {
 		return netio.TERM, nil, err
 	}
@@ -177,6 +157,30 @@ func (f *NatsJSFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowRes
 		return err
 	}
 	return subs.AutoUnsubscribe(1)
+}
+
+func (f *NatsJSFilter) Publish(inbox string, c netio.Cloner) error {
+	req, err := c()
+	if err != nil {
+		return err
+	}
+	data, err := io.ReadAll(req.Body)
+	if err != nil {
+		return err
+	}
+	msg := &nats.Msg{
+		Subject: f.Subject,
+		Header:  nats.Header{},
+		Data:    data,
+	}
+	hdr := headers.Header(req.Header.Clone())
+	hdr.SetReflector(DURABLE_CHANNEL)
+	hdr.SetReply(inbox)
+	err = hdr.Export(msg.Header)
+	if err != nil {
+		return err
+	}
+	return f.queue.PushMsg(msg)
 }
 
 func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
@@ -201,20 +205,7 @@ func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, 
 	if err != nil {
 		return netio.TERM, nil, err
 	}
-	req, err := c(netio.WithContext(ctx))
-	if err != nil {
-		return netio.TERM, nil, err
-	}
-	data, err := io.ReadAll(req.Body)
-	if err != nil {
-		return netio.TERM, nil, err
-	}
-	err = f.conn.PublishMsg(&nats.Msg{
-		Subject: f.Subject,
-		Reply:   inbox,
-		Header:  nats.Header(req.Header.Clone()),
-		Data:    data,
-	})
+	err = f.Publish(inbox, c)
 	if err != nil {
 		return netio.TERM, nil, err
 	}
@@ -243,6 +234,24 @@ func (f *NatsCoreFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowR
 		return err
 	}
 	return subs.AutoUnsubscribe(1)
+}
+
+func (f *NatsCoreFilter) Publish(inbox string, c netio.Cloner) error {
+	req, err := c()
+	if err != nil {
+		return err
+	}
+	data, err := io.ReadAll(req.Body)
+	if err != nil {
+		return err
+	}
+	return f.conn.PublishMsg(&nats.Msg{
+		Subject: f.Subject,
+		Reply:   inbox,
+		Header:  nats.Header(req.Header.Clone()),
+		Data:    data,
+	})
+
 }
 
 func CreateReflectorChannel(f *NatsBase) func(c *nats.Conn) error {
