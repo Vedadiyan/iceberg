@@ -210,13 +210,11 @@ func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, 
 	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
 		go func() {
 			defer func() {
-				go func() {
-					shadowRequest, err := MsgToRequest(msg)
-					if err != nil {
-						log.Println(err)
-					}
-					netio.Cascade(shadowRequest, f.Callers...)
-				}()
+				shadowRequest, err := MsgToRequest(msg)
+				if err != nil {
+					log.Println(err)
+				}
+				netio.Cascade(shadowRequest, f.Callers...)
 			}()
 			res, err := MsgToResponse(msg)
 			if err != nil {
