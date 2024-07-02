@@ -126,16 +126,17 @@ func NewDurableNATSFilter(f *NatsBase) (*NatsJSFilter, error) {
 }
 
 func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
-	var (
-		res *netio.ShadowResponse
-		err error
-	)
+	resCh := make(chan *netio.ShadowResponse, 1)
+	errCh := make(chan error, 1)
 	inbox := f.conn.NewRespInbox()
-	var wg sync.WaitGroup
 	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
 		go func() {
-			defer wg.Done()
-			res, err = MsgToResponse(msg)
+			res, err := MsgToResponse(msg)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			resCh <- res
 		}()
 	})
 	if err != nil {
@@ -145,7 +146,7 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *h
 	if err != nil {
 		return netio.TERM, nil, err
 	}
-	req, err := c(netio.WithContext(ctx))
+	req, err := c()
 	if err != nil {
 		return netio.TERM, nil, err
 	}
@@ -169,8 +170,20 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *h
 	if err != nil {
 		return netio.TERM, nil, err
 	}
-	wg.Wait()
-	return netio.CONTINUE, res.Response, err
+	select {
+	case res := <-resCh:
+		{
+			return netio.CONTINUE, res.Response, nil
+		}
+	case err := <-errCh:
+		{
+			return netio.TERM, nil, err
+		}
+	case <-ctx.Done():
+		{
+			return netio.TERM, nil, context.DeadlineExceeded
+		}
+	}
 }
 
 func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
@@ -187,25 +200,26 @@ func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
 }
 
 func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
-	var (
-		res *netio.ShadowResponse
-		err error
-	)
+	resCh := make(chan *netio.ShadowResponse, 1)
+	errCh := make(chan error, 1)
 	inbox := f.conn.NewRespInbox()
-	var wg sync.WaitGroup
-	subs, err := f.conn.Subscribe(inbox, func(m *nats.Msg) {
+	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
 		go func() {
 			defer func() {
 				go func() {
-					shadowRequest, err := MsgToRequest(m)
+					shadowRequest, err := MsgToRequest(msg)
 					if err != nil {
 						log.Println(err)
 					}
 					netio.Cascade(shadowRequest, f.Callers...)
 				}()
 			}()
-			defer wg.Done()
-			res, err = MsgToResponse(m)
+			res, err := MsgToResponse(msg)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			resCh <- res
 		}()
 	})
 	if err != nil {
@@ -232,8 +246,20 @@ func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, 
 	if err != nil {
 		return netio.TERM, nil, err
 	}
-	wg.Wait()
-	return netio.CONTINUE, res.Response, err
+	select {
+	case res := <-resCh:
+		{
+			return netio.CONTINUE, res.Response, nil
+		}
+	case err := <-errCh:
+		{
+			return netio.TERM, nil, err
+		}
+	case <-ctx.Done():
+		{
+			return netio.TERM, nil, context.DeadlineExceeded
+		}
+	}
 }
 
 func CreateReflectorChannel(f *NatsBase) func(c *nats.Conn) error {
