@@ -11,12 +11,14 @@ import (
 
 type (
 	Next     bool
+	Level    int
 	Cloner   func(options ...RequestOption) (*http.Request, error)
 	Response struct {
 		*http.Response
 		error
 	}
 	Caller interface {
+		GetLevel() Level
 		GetIsParallel() bool
 		GetName() string
 		GetAwaitList() []string
@@ -30,7 +32,39 @@ type (
 const (
 	TERM     Next = true
 	CONTINUE Next = false
+
+	LEVEL_NONE     Level = 0
+	LEVEL_CONNECT  Level = 1
+	LEVEL_REQUEST  Level = 2
+	LEVEL_RESPONSE Level = 4
 )
+
+func Sort(callers ...Caller) []Caller {
+	main := make([]Caller, 0)
+	connect := make([]Caller, 0)
+	request := make([]Caller, 0)
+	respone := make([]Caller, 0)
+	for _, caller := range callers {
+		if caller.GetLevel()&LEVEL_NONE == LEVEL_NONE {
+			main = append(main, caller)
+		}
+		if caller.GetLevel()&LEVEL_CONNECT == LEVEL_CONNECT {
+			connect = append(connect, caller)
+		}
+		if caller.GetLevel()&LEVEL_REQUEST == LEVEL_REQUEST {
+			request = append(request, caller)
+		}
+		if caller.GetLevel()&LEVEL_RESPONSE == LEVEL_RESPONSE {
+			respone = append(respone, caller)
+		}
+	}
+	final := make([]Caller, 0)
+	final = append(final, connect...)
+	final = append(final, request...)
+	final = append(final, main...)
+	final = append(final, respone...)
+	return final
+}
 
 func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 	var (

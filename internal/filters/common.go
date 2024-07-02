@@ -10,11 +10,10 @@ import (
 )
 
 type (
-	Level  int
 	Filter struct {
 		Name      string
 		Address   *url.URL
-		Level     Level
+		Level     netio.Level
 		Parallel  bool
 		Timeout   time.Duration
 		Callers   []netio.Caller
@@ -25,12 +24,6 @@ type (
 
 		instance netio.Caller
 	}
-)
-
-const (
-	LEVEL_CONNECT  Level = 1
-	LEVEL_REQUEST  Level = 2
-	LEVEL_RESPONSE Level = 4
 )
 
 func NewFilter() *Filter {
@@ -68,9 +61,13 @@ func (f *Filter) GetContext() context.Context {
 	return ctx
 }
 
+func (f *Filter) GetLevel() netio.Level {
+	return f.Level
+}
+
 func (f *Filter) SetExchangeHeaders(headers []string) {
 	switch f.Level {
-	case LEVEL_CONNECT, LEVEL_REQUEST:
+	case netio.LEVEL_CONNECT, netio.LEVEL_REQUEST:
 		{
 			if len(headers) == 1 && headers[0] == "*" {
 				f.RequestUpdaters = append(f.RequestUpdaters, netio.ReqReplaceHeader())
@@ -78,7 +75,7 @@ func (f *Filter) SetExchangeHeaders(headers []string) {
 			}
 			f.RequestUpdaters = append(f.RequestUpdaters, netio.ReqUpdateHeader(headers...))
 		}
-	case LEVEL_RESPONSE:
+	case netio.LEVEL_RESPONSE:
 		{
 			if len(headers) == 1 && headers[0] == "*" {
 				f.ResponseUpdaters = append(f.ResponseUpdaters, netio.ResReplaceHeader())
@@ -91,11 +88,11 @@ func (f *Filter) SetExchangeHeaders(headers []string) {
 
 func (f *Filter) SetExchangeBody(headers []string) {
 	switch f.Level {
-	case LEVEL_CONNECT, LEVEL_REQUEST:
+	case netio.LEVEL_CONNECT, netio.LEVEL_REQUEST:
 		{
 			f.RequestUpdaters = append(f.RequestUpdaters, netio.ReqReplaceBody())
 		}
-	case LEVEL_RESPONSE:
+	case netio.LEVEL_RESPONSE:
 		{
 			f.ResponseUpdaters = append(f.ResponseUpdaters, netio.ResReplaceBody())
 		}
