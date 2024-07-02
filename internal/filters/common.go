@@ -10,9 +10,8 @@ import (
 )
 
 type (
-	Level      int
-	FilterType int
-	Filter     struct {
+	Level  int
+	Filter struct {
 		Name      string
 		Address   *url.URL
 		Level     Level
@@ -32,9 +31,6 @@ const (
 	LEVEL_CONNECT  Level = 0
 	LEVEL_REQUEST  Level = 1
 	LEVEL_RESPONSE Level = 2
-
-	FILTER_HTTP         FilterType = 1
-	FILTER_DURABLE_NATS FilterType = 2
 )
 
 func NewFilter() *Filter {
