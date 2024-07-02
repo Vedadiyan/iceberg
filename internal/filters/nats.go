@@ -1,7 +1,10 @@
 package filters
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"log"
 	"net/http"
 	"sync"
 
@@ -48,6 +51,32 @@ func GetConn(url string) (*nats.Conn, error) {
 	panic("")
 }
 
+func MsgToRequest(m *nats.Msg) (*netio.ShadowRequest, error) {
+	req := http.Request{
+		Header: http.Header{},
+	}
+	for key, values := range m.Header {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+	req.Body = io.NopCloser(bytes.NewReader(m.Data))
+	return netio.NewShadowRequest(&req)
+}
+
+func MsgToResponse(m *nats.Msg) (*netio.ShadowResponse, error) {
+	res := http.Response{
+		Header: http.Header{},
+	}
+	for key, values := range m.Header {
+		for _, value := range values {
+			res.Header.Add(key, value)
+		}
+	}
+	res.Body = io.NopCloser(bytes.NewReader(m.Data))
+	return netio.NewShandowResponse(&res)
+}
+
 func NewDurableNATSFilter(f *Filter) (*DurableNATSFilter, error) {
 	conn, err := GetConn("")
 	if err != nil {
@@ -60,7 +89,11 @@ func NewDurableNATSFilter(f *Filter) (*DurableNATSFilter, error) {
 	queue.Pull(DURABLE_CHANNEL, func(m *nats.Msg) natshelpers.State {
 		defer func() {
 			go func() {
-				netio.Cascade(nil, f.Callers...)
+				shadowRequest, err := MsgToRequest(m)
+				if err != nil {
+					log.Println(err)
+				}
+				netio.Cascade(shadowRequest, f.Callers...)
 			}()
 		}()
 		clone := *m
@@ -80,7 +113,7 @@ func NewDurableNATSFilter(f *Filter) (*DurableNATSFilter, error) {
 
 func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
 	var (
-		res *http.Response
+		res *netio.ShadowResponse
 		err error
 	)
 	inbox := durableNATSFilter.conn.NewRespInbox()
@@ -88,6 +121,7 @@ func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cl
 	subs, err := durableNATSFilter.conn.Subscribe(inbox, func(msg *nats.Msg) {
 		go func() {
 			defer wg.Done()
+			res, err = MsgToResponse(msg)
 		}()
 	})
 	if err != nil {
@@ -102,5 +136,5 @@ func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cl
 		return false, nil, err
 	}
 	wg.Wait()
-	return false, res, err
+	return false, res.Response, err
 }
