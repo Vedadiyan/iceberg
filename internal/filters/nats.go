@@ -22,6 +22,13 @@ type (
 		queue   *queue.Queue
 		conn    *nats.Conn
 	}
+
+	CoreNATSFilter struct {
+		*Filter
+		Host    string
+		Subject string
+		conn    *nats.Conn
+	}
 )
 
 const (
@@ -37,7 +44,7 @@ func init() {
 	_conns = make(map[string]*nats.Conn)
 }
 
-func GetConn(url string) (*nats.Conn, error) {
+func GetConn(url string, fn func(*nats.Conn) error) (*nats.Conn, error) {
 	_connMut.Lock()
 	defer _connMut.Unlock()
 	if conn, ok := _conns[url]; ok {
@@ -78,31 +85,41 @@ func MsgToResponse(m *nats.Msg) (*netio.ShadowResponse, error) {
 }
 
 func NewDurableNATSFilter(f *Filter) (*DurableNATSFilter, error) {
-	conn, err := GetConn("")
-	if err != nil {
-		return nil, err
-	}
-	queue, err := queue.New(conn, []string{})
-	if err != nil {
-		return nil, err
-	}
-	queue.Pull(DURABLE_CHANNEL, func(m *nats.Msg) natshelpers.State {
-		defer func() {
-			go func() {
-				shadowRequest, err := MsgToRequest(m)
-				if err != nil {
-					log.Println(err)
-				}
-				netio.Cascade(shadowRequest, f.Callers...)
+	conn, err := GetConn("", func(c *nats.Conn) error {
+		queue, err := queue.New(c, []string{DURABLE_CHANNEL})
+		if err != nil {
+			return err
+		}
+		_, err = queue.Pull(DURABLE_CHANNEL, func(m *nats.Msg) natshelpers.State {
+			defer func() {
+				go func() {
+					shadowRequest, err := MsgToRequest(m)
+					if err != nil {
+						log.Println(err)
+					}
+					netio.Cascade(shadowRequest, f.Callers...)
+				}()
 			}()
-		}()
-		clone := *m
-		clone.Subject = clone.Reply
-		clone.Reply = ""
-		err := conn.PublishMsg(&clone)
-		_ = err
-		return natshelpers.Done()
+			defer func() {
+				go func() {
+					clone := *m
+					clone.Subject = clone.Reply
+					clone.Reply = ""
+					err := c.PublishMsg(&clone)
+					_ = err
+				}()
+			}()
+			return natshelpers.Done()
+		})
+		return err
 	})
+	if err != nil {
+		return nil, err
+	}
+	queue, err := queue.New(conn, []string{""})
+	if err != nil {
+		return nil, err
+	}
 	natsFilter := new(DurableNATSFilter)
 	natsFilter.Filter = f
 	natsFilter.conn = conn
@@ -132,6 +149,56 @@ func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cl
 		return false, nil, err
 	}
 	err = durableNATSFilter.queue.PushMsg(&nats.Msg{})
+	if err != nil {
+		return false, nil, err
+	}
+	wg.Wait()
+	return false, res.Response, err
+}
+
+func NewCoreNATSFilter(f *Filter) (*CoreNATSFilter, error) {
+	conn, err := GetConn("", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	natsFilter := new(CoreNATSFilter)
+	natsFilter.Filter = f
+	natsFilter.conn = conn
+	f.instance = natsFilter
+	return natsFilter, nil
+}
+
+func (coreNATSFilter *CoreNATSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
+	var (
+		res *netio.ShadowResponse
+		err error
+	)
+	inbox := coreNATSFilter.conn.NewRespInbox()
+	var wg sync.WaitGroup
+	subs, err := coreNATSFilter.conn.Subscribe(inbox, func(m *nats.Msg) {
+		go func() {
+			defer func() {
+				go func() {
+					shadowRequest, err := MsgToRequest(m)
+					if err != nil {
+						log.Println(err)
+					}
+					netio.Cascade(shadowRequest, coreNATSFilter.Callers...)
+				}()
+			}()
+			defer wg.Done()
+			res, err = MsgToResponse(m)
+		}()
+	})
+	if err != nil {
+		return false, nil, err
+	}
+	err = subs.AutoUnsubscribe(1)
+	if err != nil {
+		return false, nil, err
+	}
+	err = coreNATSFilter.conn.PublishMsg(&nats.Msg{})
 	if err != nil {
 		return false, nil, err
 	}
