@@ -22,16 +22,10 @@ func main() {
 		Address: filterUrl,
 		Level:   2,
 	})
-	proxy := proxies.NewHttpProxy(targetUrl, nil)
+	proxy := proxies.NewHttpProxy(targetUrl, []netio.Caller{filter})
 	_ = proxy
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		shadowRequest, err := CreateRequest(r)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		res, err := netio.Cascade(shadowRequest, proxy, filter)
+		res, err := proxy.Cascade(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadGateway)
 		}

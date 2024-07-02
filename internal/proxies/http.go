@@ -75,3 +75,11 @@ func (f *HttpProxy) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http
 	}
 	return netio.CONTINUE, res, nil
 }
+
+func (f *HttpProxy) Cascade(r *http.Request) (*netio.ShadowResponse, error) {
+	in, err := netio.NewShadowRequest(r)
+	if err != nil {
+		return nil, err
+	}
+	return netio.Cascade(in, f.Callers...)
+}
