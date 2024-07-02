@@ -128,6 +128,8 @@ func NewDurableNATSFilter(f *NatsBase) (*NatsJSFilter, error) {
 func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
 	resCh := make(chan *netio.ShadowResponse, 1)
 	errCh := make(chan error, 1)
+	defer close(resCh)
+	defer close(errCh)
 	inbox := f.conn.NewRespInbox()
 	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
 		go func() {
@@ -202,6 +204,8 @@ func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
 func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
 	resCh := make(chan *netio.ShadowResponse, 1)
 	errCh := make(chan error, 1)
+	defer close(resCh)
+	defer close(errCh)
 	inbox := f.conn.NewRespInbox()
 	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
 		go func() {
