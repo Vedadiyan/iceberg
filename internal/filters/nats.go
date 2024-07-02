@@ -14,9 +14,10 @@ import (
 type (
 	DurableNATSFilter struct {
 		*Filter
-		Host  string
-		queue *queue.Queue
-		conn  *nats.Conn
+		Host    string
+		Subject string
+		queue   *queue.Queue
+		conn    *nats.Conn
 	}
 )
 
@@ -57,6 +58,11 @@ func NewDurableNATSFilter(f *Filter) (*DurableNATSFilter, error) {
 		return nil, err
 	}
 	queue.Pull(DURABLE_CHANNEL, func(m *nats.Msg) natshelpers.State {
+		defer func() {
+			go func() {
+				netio.Cascade(nil, f.Callers...)
+			}()
+		}()
 		clone := *m
 		clone.Subject = clone.Reply
 		clone.Reply = ""
@@ -68,10 +74,11 @@ func NewDurableNATSFilter(f *Filter) (*DurableNATSFilter, error) {
 	natsFilter.Filter = f
 	natsFilter.conn = conn
 	natsFilter.queue = queue
+	f.instance = natsFilter
 	return natsFilter, nil
 }
 
-func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cloner) (*http.Response, error) {
+func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
 	var (
 		res *http.Response
 		err error
@@ -84,16 +91,16 @@ func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cl
 		}()
 	})
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 	err = subs.AutoUnsubscribe(1)
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 	err = durableNATSFilter.queue.PushMsg(&nats.Msg{})
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
 	wg.Wait()
-	return res, err
+	return false, res, err
 }

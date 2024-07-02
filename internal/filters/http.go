@@ -16,6 +16,7 @@ type (
 func NewHttpFilter(f *Filter) *HttpFilter {
 	httpFilter := new(HttpFilter)
 	httpFilter.Filter = f
+	f.instance = httpFilter
 	return httpFilter
 }
 

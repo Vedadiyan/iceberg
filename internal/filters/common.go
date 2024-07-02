@@ -2,6 +2,7 @@ package filters
 
 import (
 	"context"
+	"net/http"
 	"net/url"
 	"time"
 
@@ -9,18 +10,21 @@ import (
 )
 
 type (
-	Level  int
-	Filter struct {
+	Level      int
+	FilterType int
+	Filter     struct {
 		Name      string
 		Address   *url.URL
 		Level     Level
 		Parallel  bool
 		Timeout   time.Duration
-		Filters   []Filter
+		Callers   []netio.Caller
 		AwaitList []string
 
 		RequestUpdaters  []netio.RequestUpdater
 		ResponseUpdaters []netio.ResponseUpdater
+
+		instance netio.Caller
 	}
 )
 
@@ -28,6 +32,9 @@ const (
 	LEVEL_CONNECT  Level = 0
 	LEVEL_REQUEST  Level = 1
 	LEVEL_RESPONSE Level = 2
+
+	FILTER_HTTP         FilterType = 1
+	FILTER_DURABLE_NATS FilterType = 2
 )
 
 func NewFilter() *Filter {
@@ -97,4 +104,8 @@ func (f *Filter) SetExchangeBody(headers []string) {
 			f.ResponseUpdaters = append(f.ResponseUpdaters, netio.ResReplaceBody())
 		}
 	}
+}
+
+func (f *Filter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
+	return f.instance.Call(ctx, c)
 }
