@@ -117,12 +117,12 @@ func NewDurableNATSFilter(f *NatsBase) (*NatsJSFilter, error) {
 	if err != nil {
 		return nil, err
 	}
-	natsFilter := new(NatsJSFilter)
-	natsFilter.NatsBase = f
-	natsFilter.conn = conn
-	natsFilter.queue = queue
-	f.instance = natsFilter
-	return natsFilter, nil
+	nf := new(NatsJSFilter)
+	nf.NatsBase = f
+	nf.conn = conn
+	nf.queue = queue
+	f.instance = nf
+	return nf, nil
 }
 
 func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
@@ -193,12 +193,11 @@ func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	natsFilter := new(NatsCoreFilter)
-	natsFilter.NatsBase = f
-	natsFilter.conn = conn
-	f.instance = natsFilter
-	return natsFilter, nil
+	nf := new(NatsCoreFilter)
+	nf.NatsBase = f
+	nf.conn = conn
+	f.instance = nf
+	return nf, nil
 }
 
 func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
@@ -297,5 +296,4 @@ func CreateReflectorChannel(f *NatsBase) func(c *nats.Conn) error {
 		_gc = append(_gc, stop)
 		return err
 	}
-
 }
