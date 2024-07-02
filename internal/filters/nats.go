@@ -158,10 +158,10 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Re
 		Header:  nats.Header{},
 		Data:    data,
 	}
-	headers := headers.Header(req.Header.Clone())
-	headers.SetReflector(DURABLE_CHANNEL)
-	headers.SetReply(inbox)
-	err = headers.Export(m.Header)
+	hdr := headers.Header(req.Header.Clone())
+	hdr.SetReflector(DURABLE_CHANNEL)
+	hdr.SetReply(inbox)
+	err = hdr.Export(m.Header)
 	if err != nil {
 		return false, nil, err
 	}
