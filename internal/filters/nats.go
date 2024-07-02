@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 
 	"github.com/nats-io/nats.go"
@@ -15,19 +17,19 @@ import (
 )
 
 type (
-	DurableNATSFilter struct {
+	BaseNATS struct {
 		*Filter
 		Host    string
 		Subject string
-		queue   *queue.Queue
 		conn    *nats.Conn
+	}
+	DurableNATSFilter struct {
+		*BaseNATS
+		queue *queue.Queue
 	}
 
 	CoreNATSFilter struct {
-		*Filter
-		Host    string
-		Subject string
-		conn    *nats.Conn
+		*BaseNATS
 	}
 )
 
@@ -54,10 +56,15 @@ func GetConn(url string, fn func(*nats.Conn) error) (*nats.Conn, error) {
 	}
 	conn, err := nats.Connect(url)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	_ = conn
-	panic("")
+	if fn != nil {
+		err := fn(conn)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return conn, nil
 }
 
 func MsgToRequest(m *nats.Msg) (*netio.ShadowRequest, error) {
@@ -86,8 +93,22 @@ func MsgToResponse(m *nats.Msg) (*netio.ShadowResponse, error) {
 	return netio.NewShandowResponse(&res)
 }
 
-func NewDurableNATSFilter(f *Filter) (*DurableNATSFilter, error) {
-	conn, err := GetConn("", func(c *nats.Conn) error {
+func NewBaseNATS(f *Filter) *BaseNATS {
+	host := f.Address.Host
+	if strings.HasPrefix(host, "[[") && strings.HasSuffix(host, "]]") {
+		host = strings.TrimLeft(host, "[")
+		host = strings.TrimRight(host, "]")
+		host = os.Getenv(host)
+	}
+	baseNATS := new(BaseNATS)
+	baseNATS.Filter = f
+	baseNATS.Host = host
+	baseNATS.Subject = f.Address.Path
+	return baseNATS
+}
+
+func NewDurableNATSFilter(f *BaseNATS) (*DurableNATSFilter, error) {
+	conn, err := GetConn(f.Host, func(c *nats.Conn) error {
 		queue, err := queue.New(c, []string{DURABLE_CHANNEL})
 		if err != nil {
 			return err
@@ -119,12 +140,12 @@ func NewDurableNATSFilter(f *Filter) (*DurableNATSFilter, error) {
 	if err != nil {
 		return nil, err
 	}
-	queue, err := queue.New(conn, []string{""})
+	queue, err := queue.New(conn, []string{f.Subject})
 	if err != nil {
 		return nil, err
 	}
 	natsFilter := new(DurableNATSFilter)
-	natsFilter.Filter = f
+	natsFilter.BaseNATS = f
 	natsFilter.conn = conn
 	natsFilter.queue = queue
 	f.instance = natsFilter
@@ -151,7 +172,19 @@ func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cl
 	if err != nil {
 		return false, nil, err
 	}
-	err = durableNATSFilter.queue.PushMsg(&nats.Msg{})
+	req, err := c(netio.WithContext(ctx))
+	if err != nil {
+		return false, nil, err
+	}
+	data, err := io.ReadAll(req.Body)
+	if err != nil {
+		return false, nil, err
+	}
+	err = durableNATSFilter.queue.PushMsg(&nats.Msg{
+		Subject: durableNATSFilter.Subject,
+		Header:  nats.Header(req.Header.Clone()),
+		Data:    data,
+	})
 	if err != nil {
 		return false, nil, err
 	}
@@ -159,14 +192,14 @@ func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cl
 	return false, res.Response, err
 }
 
-func NewCoreNATSFilter(f *Filter) (*CoreNATSFilter, error) {
-	conn, err := GetConn("", nil)
+func NewCoreNATSFilter(f *BaseNATS) (*CoreNATSFilter, error) {
+	conn, err := GetConn(f.Host, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	natsFilter := new(CoreNATSFilter)
-	natsFilter.Filter = f
+	natsFilter.BaseNATS = f
 	natsFilter.conn = conn
 	f.instance = natsFilter
 	return natsFilter, nil
@@ -201,7 +234,20 @@ func (coreNATSFilter *CoreNATSFilter) Call(ctx context.Context, c netio.Cloner) 
 	if err != nil {
 		return false, nil, err
 	}
-	err = coreNATSFilter.conn.PublishMsg(&nats.Msg{})
+	req, err := c(netio.WithContext(ctx))
+	if err != nil {
+		return false, nil, err
+	}
+	data, err := io.ReadAll(req.Body)
+	if err != nil {
+		return false, nil, err
+	}
+	err = coreNATSFilter.conn.PublishMsg(&nats.Msg{
+		Subject: coreNATSFilter.Subject,
+		Reply:   inbox,
+		Header:  nats.Header(req.Header.Clone()),
+		Data:    data,
+	})
 	if err != nil {
 		return false, nil, err
 	}
