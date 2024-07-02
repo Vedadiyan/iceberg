@@ -28,9 +28,9 @@ type (
 )
 
 const (
-	LEVEL_CONNECT  Level = 0
-	LEVEL_REQUEST  Level = 1
-	LEVEL_RESPONSE Level = 2
+	LEVEL_CONNECT  Level = 1
+	LEVEL_REQUEST  Level = 2
+	LEVEL_RESPONSE Level = 4
 )
 
 func NewFilter() *Filter {
