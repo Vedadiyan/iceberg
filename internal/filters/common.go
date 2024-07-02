@@ -105,3 +105,20 @@ func (f *Filter) SetExchangeBody(headers []string) {
 func (f *Filter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
 	return f.instance.Call(ctx, c)
 }
+
+func Await(resCh <-chan *netio.ShadowResponse, errCh <-chan error, ctx context.Context) (netio.Next, *http.Response, error) {
+	select {
+	case res := <-resCh:
+		{
+			return netio.CONTINUE, res.Response, nil
+		}
+	case err := <-errCh:
+		{
+			return netio.TERM, nil, err
+		}
+	case <-ctx.Done():
+		{
+			return netio.TERM, nil, context.DeadlineExceeded
+		}
+	}
+}

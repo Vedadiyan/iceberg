@@ -131,20 +131,7 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *h
 	defer close(resCh)
 	defer close(errCh)
 	inbox := f.conn.NewRespInbox()
-	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
-		go func() {
-			res, err := MsgToResponse(msg)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			resCh <- res
-		}()
-	})
-	if err != nil {
-		return netio.TERM, nil, err
-	}
-	err = subs.AutoUnsubscribe(1)
+	err := f.SubscribeOnce(inbox, resCh, errCh)
 	if err != nil {
 		return netio.TERM, nil, err
 	}
@@ -172,20 +159,24 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *h
 	if err != nil {
 		return netio.TERM, nil, err
 	}
-	select {
-	case res := <-resCh:
-		{
-			return netio.CONTINUE, res.Response, nil
-		}
-	case err := <-errCh:
-		{
-			return netio.TERM, nil, err
-		}
-	case <-ctx.Done():
-		{
-			return netio.TERM, nil, context.DeadlineExceeded
-		}
+	return Await(resCh, errCh, ctx)
+}
+
+func (f *NatsJSFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowResponse, errCh chan<- error) error {
+	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
+		go func() {
+			res, err := MsgToResponse(msg)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			resCh <- res
+		}()
+	})
+	if err != nil {
+		return err
 	}
+	return subs.AutoUnsubscribe(1)
 }
 
 func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
@@ -206,27 +197,7 @@ func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, 
 	defer close(resCh)
 	defer close(errCh)
 	inbox := f.conn.NewRespInbox()
-	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
-		go func() {
-			defer func() {
-				shadowRequest, err := MsgToRequest(msg)
-				if err != nil {
-					log.Println(err)
-				}
-				netio.Cascade(shadowRequest, f.Callers...)
-			}()
-			res, err := MsgToResponse(msg)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			resCh <- res
-		}()
-	})
-	if err != nil {
-		return netio.TERM, nil, err
-	}
-	err = subs.AutoUnsubscribe(1)
+	err := f.SubscribeOnce(inbox, resCh, errCh)
 	if err != nil {
 		return netio.TERM, nil, err
 	}
@@ -247,20 +218,31 @@ func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, 
 	if err != nil {
 		return netio.TERM, nil, err
 	}
-	select {
-	case res := <-resCh:
-		{
-			return netio.CONTINUE, res.Response, nil
-		}
-	case err := <-errCh:
-		{
-			return netio.TERM, nil, err
-		}
-	case <-ctx.Done():
-		{
-			return netio.TERM, nil, context.DeadlineExceeded
-		}
+	return Await(resCh, errCh, ctx)
+}
+
+func (f *NatsCoreFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowResponse, errCh chan<- error) error {
+	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
+		go func() {
+			defer func() {
+				shadowRequest, err := MsgToRequest(msg)
+				if err != nil {
+					log.Println(err)
+				}
+				netio.Cascade(shadowRequest, f.Callers...)
+			}()
+			res, err := MsgToResponse(msg)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			resCh <- res
+		}()
+	})
+	if err != nil {
+		return err
 	}
+	return subs.AutoUnsubscribe(1)
 }
 
 func CreateReflectorChannel(f *NatsBase) func(c *nats.Conn) error {
