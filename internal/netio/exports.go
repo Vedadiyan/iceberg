@@ -124,6 +124,7 @@ func await(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks 
 func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest) {
 	go func() {
 		ch := make(chan *Response, 1)
+		defer close(ch)
 		mut.Lock()
 		tsks[cal.GetName()] = ch
 		ctxs[cal.GetName()] = cal.GetContext()
