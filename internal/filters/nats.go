@@ -143,15 +143,16 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *h
 }
 
 func (f *NatsJSFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowResponse, errCh chan<- error) error {
+	handle := func(msg *nats.Msg) {
+		res, err := MsgToResponse(msg)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		resCh <- res
+	}
 	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
-		go func() {
-			res, err := MsgToResponse(msg)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			resCh <- res
-		}()
+		go handle(msg)
 	})
 	if err != nil {
 		return err
@@ -213,21 +214,25 @@ func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, 
 }
 
 func (f *NatsCoreFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowResponse, errCh chan<- error) error {
+	handle := func(msg *nats.Msg) {
+		res, err := MsgToResponse(msg)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		resCh <- res
+	}
+	callbacks := func(msg *nats.Msg) {
+		shadowRequest, err := MsgToRequest(msg)
+		if err != nil {
+			log.Println(err)
+		}
+		netio.Cascade(shadowRequest, f.Callers...)
+	}
 	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
 		go func() {
-			defer func() {
-				shadowRequest, err := MsgToRequest(msg)
-				if err != nil {
-					log.Println(err)
-				}
-				netio.Cascade(shadowRequest, f.Callers...)
-			}()
-			res, err := MsgToResponse(msg)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			resCh <- res
+			defer callbacks(msg)
+			handle(msg)
 		}()
 	})
 	if err != nil {
