@@ -37,11 +37,13 @@ const (
 
 var (
 	_conns   map[string]*nats.Conn
+	_gc      []func() error
 	_connMut sync.RWMutex
 )
 
 func init() {
 	_conns = make(map[string]*nats.Conn)
+	_gc = make([]func() error, 0)
 }
 
 func GetConn(url string, fn func(*nats.Conn) error) (*nats.Conn, error) {
@@ -90,7 +92,7 @@ func NewDurableNATSFilter(f *Filter) (*DurableNATSFilter, error) {
 		if err != nil {
 			return err
 		}
-		_, err = queue.Pull(DURABLE_CHANNEL, func(m *nats.Msg) natshelpers.State {
+		stop, err := queue.Pull(DURABLE_CHANNEL, func(m *nats.Msg) natshelpers.State {
 			defer func() {
 				go func() {
 					shadowRequest, err := MsgToRequest(m)
@@ -111,6 +113,7 @@ func NewDurableNATSFilter(f *Filter) (*DurableNATSFilter, error) {
 			}()
 			return natshelpers.Done()
 		})
+		_gc = append(_gc, stop)
 		return err
 	})
 	if err != nil {
