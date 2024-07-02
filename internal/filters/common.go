@@ -102,6 +102,6 @@ func (f *Filter) SetExchangeBody(headers []string) {
 	}
 }
 
-func (f *Filter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
+func (f *Filter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
 	return f.instance.Call(ctx, c)
 }

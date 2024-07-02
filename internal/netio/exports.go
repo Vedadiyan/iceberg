@@ -10,6 +10,7 @@ import (
 )
 
 type (
+	Next     bool
 	Cloner   func(options ...RequestOption) (*http.Request, error)
 	Response struct {
 		*http.Response
@@ -19,11 +20,16 @@ type (
 		GetIsParallel() bool
 		GetName() string
 		GetAwaitList() []string
-		Call(context.Context, Cloner) (bool, *http.Response, error)
+		Call(context.Context, Cloner) (Next, *http.Response, error)
 		GetRequestUpdaters() []RequestUpdater
 		GetResponseUpdaters() []ResponseUpdater
 		GetContext() context.Context
 	}
+)
+
+const (
+	TERM     Next = true
+	CONTINUE Next = false
 )
 
 func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {

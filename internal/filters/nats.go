@@ -125,7 +125,7 @@ func NewDurableNATSFilter(f *NatsBase) (*NatsJSFilter, error) {
 	return natsFilter, nil
 }
 
-func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
+func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
 	var (
 		res *netio.ShadowResponse
 		err error
@@ -139,19 +139,19 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Re
 		}()
 	})
 	if err != nil {
-		return false, nil, err
+		return netio.TERM, nil, err
 	}
 	err = subs.AutoUnsubscribe(1)
 	if err != nil {
-		return false, nil, err
+		return netio.TERM, nil, err
 	}
 	req, err := c(netio.WithContext(ctx))
 	if err != nil {
-		return false, nil, err
+		return netio.TERM, nil, err
 	}
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
-		return false, nil, err
+		return netio.TERM, nil, err
 	}
 	msg := &nats.Msg{
 		Subject: f.Subject,
@@ -163,14 +163,14 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Re
 	hdr.SetReply(inbox)
 	err = hdr.Export(msg.Header)
 	if err != nil {
-		return false, nil, err
+		return netio.TERM, nil, err
 	}
 	err = f.queue.PushMsg(msg)
 	if err != nil {
-		return false, nil, err
+		return netio.TERM, nil, err
 	}
 	wg.Wait()
-	return false, res.Response, err
+	return netio.CONTINUE, res.Response, err
 }
 
 func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
@@ -186,7 +186,7 @@ func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
 	return natsFilter, nil
 }
 
-func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
+func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
 	var (
 		res *netio.ShadowResponse
 		err error
@@ -209,19 +209,19 @@ func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.
 		}()
 	})
 	if err != nil {
-		return false, nil, err
+		return netio.TERM, nil, err
 	}
 	err = subs.AutoUnsubscribe(1)
 	if err != nil {
-		return false, nil, err
+		return netio.TERM, nil, err
 	}
 	req, err := c(netio.WithContext(ctx))
 	if err != nil {
-		return false, nil, err
+		return netio.TERM, nil, err
 	}
 	data, err := io.ReadAll(req.Body)
 	if err != nil {
-		return false, nil, err
+		return netio.TERM, nil, err
 	}
 	err = f.conn.PublishMsg(&nats.Msg{
 		Subject: f.Subject,
@@ -230,10 +230,10 @@ func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.
 		Data:    data,
 	})
 	if err != nil {
-		return false, nil, err
+		return netio.TERM, nil, err
 	}
 	wg.Wait()
-	return false, res.Response, err
+	return netio.CONTINUE, res.Response, err
 }
 
 func CreateReflectorChannel(f *NatsBase) func(c *nats.Conn) error {
