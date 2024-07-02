@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 type (
@@ -29,6 +31,7 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 		out *ShadowResponse
 		mut sync.RWMutex
 	)
+	in.Header.Add("X-Request-Id", uuid.New().String())
 	tasks := make(map[string]<-chan *Response)
 	ctx := make(map[string]context.Context)
 	for _, cal := range callers {
@@ -47,7 +50,7 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 		if term {
 			return NewShandowResponse(res)
 		}
-		out, err = createOrUpdateResponse(out, res, cal.GetResponseUpdaters())
+		out, err = createOrUpdateResponse(out, res, append(cal.GetResponseUpdaters(), ResUpdateHeader("X-Request-Id")))
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +59,7 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 			return nil, err
 		}
 
-		err = UpdateRequest(in, tmp.Request, cal.GetRequestUpdaters())
+		err = UpdateRequest(in, tmp.Request, append(cal.GetRequestUpdaters(), ReqUpdateHeader("X-Request-Id")))
 		if err != nil {
 			return nil, err
 		}

@@ -180,9 +180,12 @@ func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cl
 	if err != nil {
 		return false, nil, err
 	}
+	headers := nats.Header(req.Header.Clone())
+	headers.Set("Reply", inbox)
+	headers.Set("Reflector", DURABLE_CHANNEL)
 	err = durableNATSFilter.queue.PushMsg(&nats.Msg{
 		Subject: durableNATSFilter.Subject,
-		Header:  nats.Header(req.Header.Clone()),
+		Header:  headers,
 		Data:    data,
 	})
 	if err != nil {
