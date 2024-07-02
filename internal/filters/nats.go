@@ -13,6 +13,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/vedadiyan/iceberg/internal/netio"
 	natshelpers "github.com/vedadiyan/nats-helpers"
+	"github.com/vedadiyan/nats-helpers/headers"
 	queue "github.com/vedadiyan/nats-helpers/queue"
 )
 
@@ -126,9 +127,16 @@ func NewDurableNATSFilter(f *BaseNATS) (*DurableNATSFilter, error) {
 			defer func() {
 				go func() {
 					clone := *m
-					clone.Subject = clone.Reply
-					clone.Reply = ""
-					err := c.PublishMsg(&clone)
+					headers, err := headers.Import(clone.Header)
+					_ = err
+					reply := headers.GetReply()
+					if len(reply) == 0 {
+						return
+					}
+					m.Subject = reply
+					headers.DeleteReply()
+					headers.Export(clone.Header)
+					err = c.PublishMsg(&clone)
 					_ = err
 				}()
 			}()
@@ -180,14 +188,19 @@ func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cl
 	if err != nil {
 		return false, nil, err
 	}
-	headers := nats.Header(req.Header.Clone())
-	headers.Set("Reply", inbox)
-	headers.Set("Reflector", DURABLE_CHANNEL)
-	err = durableNATSFilter.queue.PushMsg(&nats.Msg{
+	m := &nats.Msg{
 		Subject: durableNATSFilter.Subject,
-		Header:  headers,
+		Header:  nats.Header{},
 		Data:    data,
-	})
+	}
+	headers := headers.Header(req.Header.Clone())
+	headers.SetReflector(DURABLE_CHANNEL)
+	headers.SetReply(inbox)
+	err = headers.Export(m.Header)
+	if err != nil {
+		return false, nil, err
+	}
+	err = durableNATSFilter.queue.PushMsg(m)
 	if err != nil {
 		return false, nil, err
 	}
