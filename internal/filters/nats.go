@@ -24,12 +24,12 @@ type (
 		Subject string
 		conn    *nats.Conn
 	}
-	DurableNATSFilter struct {
+	NatsJSFilter struct {
 		*BaseNATS
 		queue *queue.Queue
 	}
 
-	CoreNATSFilter struct {
+	NatsCoreFilter struct {
 		*BaseNATS
 	}
 )
@@ -108,7 +108,7 @@ func NewBaseNATS(f *Filter) *BaseNATS {
 	return baseNATS
 }
 
-func NewDurableNATSFilter(f *BaseNATS) (*DurableNATSFilter, error) {
+func NewDurableNATSFilter(f *BaseNATS) (*NatsJSFilter, error) {
 	conn, err := GetConn(f.Host, CreateReflectorChannel(f))
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func NewDurableNATSFilter(f *BaseNATS) (*DurableNATSFilter, error) {
 	if err != nil {
 		return nil, err
 	}
-	natsFilter := new(DurableNATSFilter)
+	natsFilter := new(NatsJSFilter)
 	natsFilter.BaseNATS = f
 	natsFilter.conn = conn
 	natsFilter.queue = queue
@@ -125,7 +125,7 @@ func NewDurableNATSFilter(f *BaseNATS) (*DurableNATSFilter, error) {
 	return natsFilter, nil
 }
 
-func (f *DurableNATSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
+func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
 	var (
 		res *netio.ShadowResponse
 		err error
@@ -173,20 +173,20 @@ func (f *DurableNATSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *ht
 	return false, res.Response, err
 }
 
-func NewCoreNATSFilter(f *BaseNATS) (*CoreNATSFilter, error) {
+func NewCoreNATSFilter(f *BaseNATS) (*NatsCoreFilter, error) {
 	conn, err := GetConn(f.Host, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	natsFilter := new(CoreNATSFilter)
+	natsFilter := new(NatsCoreFilter)
 	natsFilter.BaseNATS = f
 	natsFilter.conn = conn
 	f.instance = natsFilter
 	return natsFilter, nil
 }
 
-func (f *CoreNATSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
+func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
 	var (
 		res *netio.ShadowResponse
 		err error
