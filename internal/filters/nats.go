@@ -272,30 +272,26 @@ func CreateReflectorChannel(f *NatsBase) func(c *nats.Conn) error {
 		}
 		stop, err := queue.Pull(DURABLE_CHANNEL, func(m *nats.Msg) natshelpers.State {
 			defer func() {
-				go func() {
-					shadowRequest, err := MsgToRequest(m)
-					if err != nil {
-						log.Println(err)
-					}
-					netio.Cascade(shadowRequest, f.Callers...)
-				}()
+				shadowRequest, err := MsgToRequest(m)
+				if err != nil {
+					log.Println(err)
+				}
+				netio.Cascade(shadowRequest, f.Callers...)
 			}()
-			defer func() {
-				go func() {
-					clone := *m
-					headers, err := headers.Import(clone.Header)
-					_ = err
-					reply := headers.GetReply()
-					if len(reply) == 0 {
-						return
-					}
-					m.Subject = reply
-					headers.DeleteReply()
-					headers.Export(clone.Header)
-					err = c.PublishMsg(&clone)
-					_ = err
-				}()
-			}()
+			clone := *m
+			headers, err := headers.Import(clone.Header)
+			if err != nil {
+				return natshelpers.Done()
+			}
+			reply := headers.GetReply()
+			if len(reply) == 0 {
+				return natshelpers.Done()
+			}
+			m.Subject = reply
+			headers.DeleteReply()
+			headers.Export(clone.Header)
+			err = c.PublishMsg(&clone)
+			_ = err
 			return natshelpers.Done()
 		})
 		_gc = append(_gc, stop)
