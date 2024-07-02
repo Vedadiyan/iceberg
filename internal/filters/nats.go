@@ -126,11 +126,11 @@ func NewDurableNATSFilter(f *NatsBase) (*NatsJSFilter, error) {
 }
 
 func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
+	inbox := f.conn.NewRespInbox()
 	resCh := make(chan *netio.ShadowResponse, 1)
 	errCh := make(chan error, 1)
 	defer close(resCh)
 	defer close(errCh)
-	inbox := f.conn.NewRespInbox()
 	err := f.SubscribeOnce(inbox, resCh, errCh)
 	if err != nil {
 		return netio.TERM, nil, err
@@ -192,11 +192,11 @@ func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
 }
 
 func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
+	inbox := f.conn.NewRespInbox()
 	resCh := make(chan *netio.ShadowResponse, 1)
 	errCh := make(chan error, 1)
 	defer close(resCh)
 	defer close(errCh)
-	inbox := f.conn.NewRespInbox()
 	err := f.SubscribeOnce(inbox, resCh, errCh)
 	if err != nil {
 		return netio.TERM, nil, err
