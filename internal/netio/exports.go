@@ -17,7 +17,7 @@ type (
 		GetIsParallel() bool
 		GetName() string
 		GetAwaitList() []string
-		Call(context.Context, Cloner) (*http.Response, error)
+		Call(context.Context, Cloner) (bool, *http.Response, error)
 		GetRequestUpdaters() []RequestUpdater
 		GetResponseUpdaters() []ResponseUpdater
 		GetContext() context.Context
@@ -40,9 +40,12 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 			spin(cal, &mut, ctx, tasks, in)
 			continue
 		}
-		res, err := cal.Call(cal.GetContext(), in.CloneRequest)
+		term, res, err := cal.Call(cal.GetContext(), in.CloneRequest)
 		if err != nil {
 			return nil, err
+		}
+		if term {
+			return NewShandowResponse(res)
 		}
 		out, err = createOrUpdateResponse(out, res, cal.GetResponseUpdaters())
 		if err != nil {
@@ -63,14 +66,14 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 	return out, nil
 }
 
-func await(cal Caller, mute *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest, out *ShadowResponse) error {
+func await(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest, out *ShadowResponse) error {
 	if len(cal.GetAwaitList()) != 0 {
 		for _, task := range cal.GetAwaitList() {
 			var err error
-			mute.RLocker()
+			mut.RLocker()
 			ch, chFound := tsks[task]
 			ctx, ctxFound := ctxs[task]
-			mute.RUnlock()
+			mut.RUnlock()
 			if !chFound || !ctxFound {
 				return fmt.Errorf("task not found")
 			}
@@ -116,7 +119,7 @@ func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks m
 		tsks[cal.GetName()] = ch
 		ctxs[cal.GetName()] = cal.GetContext()
 		mut.Unlock()
-		r, err := cal.Call(cal.GetContext(), in.CloneRequest)
+		_, r, err := cal.Call(cal.GetContext(), in.CloneRequest)
 		if err != nil {
 			ch <- &Response{
 				error: err,

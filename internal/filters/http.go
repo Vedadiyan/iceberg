@@ -19,10 +19,14 @@ func NewHttpFilter(f *Filter) *HttpFilter {
 	return httpFilter
 }
 
-func (f *HttpFilter) Call(ctx context.Context, c netio.Cloner) (*http.Response, error) {
+func (f *HttpFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
 	r, err := c(netio.WithUrl(f.Address), netio.WithContext(ctx))
 	if err != nil {
-		return nil, err
+		return false, nil, err
 	}
-	return http.DefaultClient.Do(r)
+	res, err := http.DefaultClient.Do(r)
+	if err != nil {
+		return false, nil, err
+	}
+	return false, res, nil
 }
