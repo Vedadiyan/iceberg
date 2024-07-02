@@ -256,7 +256,6 @@ func (f *NatsCoreFilter) Publish(inbox string, c netio.Cloner) error {
 		Header:  nats.Header(req.Header.Clone()),
 		Data:    data,
 	})
-
 }
 
 func CreateReflectorChannel(f *NatsBase) func(c *nats.Conn) error {
