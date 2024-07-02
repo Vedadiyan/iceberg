@@ -109,7 +109,135 @@ func NewBaseNATS(f *Filter) *BaseNATS {
 }
 
 func NewDurableNATSFilter(f *BaseNATS) (*DurableNATSFilter, error) {
-	conn, err := GetConn(f.Host, func(c *nats.Conn) error {
+	conn, err := GetConn(f.Host, CreateReflectorChannel(f))
+	if err != nil {
+		return nil, err
+	}
+	queue, err := queue.New(conn, []string{f.Subject})
+	if err != nil {
+		return nil, err
+	}
+	natsFilter := new(DurableNATSFilter)
+	natsFilter.BaseNATS = f
+	natsFilter.conn = conn
+	natsFilter.queue = queue
+	f.instance = natsFilter
+	return natsFilter, nil
+}
+
+func (f *DurableNATSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
+	var (
+		res *netio.ShadowResponse
+		err error
+	)
+	inbox := f.conn.NewRespInbox()
+	var wg sync.WaitGroup
+	subs, err := f.conn.Subscribe(inbox, func(msg *nats.Msg) {
+		go func() {
+			defer wg.Done()
+			res, err = MsgToResponse(msg)
+		}()
+	})
+	if err != nil {
+		return false, nil, err
+	}
+	err = subs.AutoUnsubscribe(1)
+	if err != nil {
+		return false, nil, err
+	}
+	req, err := c(netio.WithContext(ctx))
+	if err != nil {
+		return false, nil, err
+	}
+	data, err := io.ReadAll(req.Body)
+	if err != nil {
+		return false, nil, err
+	}
+	m := &nats.Msg{
+		Subject: f.Subject,
+		Header:  nats.Header{},
+		Data:    data,
+	}
+	headers := headers.Header(req.Header.Clone())
+	headers.SetReflector(DURABLE_CHANNEL)
+	headers.SetReply(inbox)
+	err = headers.Export(m.Header)
+	if err != nil {
+		return false, nil, err
+	}
+	err = f.queue.PushMsg(m)
+	if err != nil {
+		return false, nil, err
+	}
+	wg.Wait()
+	return false, res.Response, err
+}
+
+func NewCoreNATSFilter(f *BaseNATS) (*CoreNATSFilter, error) {
+	conn, err := GetConn(f.Host, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	natsFilter := new(CoreNATSFilter)
+	natsFilter.BaseNATS = f
+	natsFilter.conn = conn
+	f.instance = natsFilter
+	return natsFilter, nil
+}
+
+func (f *CoreNATSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
+	var (
+		res *netio.ShadowResponse
+		err error
+	)
+	inbox := f.conn.NewRespInbox()
+	var wg sync.WaitGroup
+	subs, err := f.conn.Subscribe(inbox, func(m *nats.Msg) {
+		go func() {
+			defer func() {
+				go func() {
+					shadowRequest, err := MsgToRequest(m)
+					if err != nil {
+						log.Println(err)
+					}
+					netio.Cascade(shadowRequest, f.Callers...)
+				}()
+			}()
+			defer wg.Done()
+			res, err = MsgToResponse(m)
+		}()
+	})
+	if err != nil {
+		return false, nil, err
+	}
+	err = subs.AutoUnsubscribe(1)
+	if err != nil {
+		return false, nil, err
+	}
+	req, err := c(netio.WithContext(ctx))
+	if err != nil {
+		return false, nil, err
+	}
+	data, err := io.ReadAll(req.Body)
+	if err != nil {
+		return false, nil, err
+	}
+	err = f.conn.PublishMsg(&nats.Msg{
+		Subject: f.Subject,
+		Reply:   inbox,
+		Header:  nats.Header(req.Header.Clone()),
+		Data:    data,
+	})
+	if err != nil {
+		return false, nil, err
+	}
+	wg.Wait()
+	return false, res.Response, err
+}
+
+func CreateReflectorChannel(f *BaseNATS) func(c *nats.Conn) error {
+	return func(c *nats.Conn) error {
 		queue, err := queue.New(c, []string{DURABLE_CHANNEL})
 		if err != nil {
 			return err
@@ -144,129 +272,6 @@ func NewDurableNATSFilter(f *BaseNATS) (*DurableNATSFilter, error) {
 		})
 		_gc = append(_gc, stop)
 		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-	queue, err := queue.New(conn, []string{f.Subject})
-	if err != nil {
-		return nil, err
-	}
-	natsFilter := new(DurableNATSFilter)
-	natsFilter.BaseNATS = f
-	natsFilter.conn = conn
-	natsFilter.queue = queue
-	f.instance = natsFilter
-	return natsFilter, nil
-}
-
-func (durableNATSFilter *DurableNATSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
-	var (
-		res *netio.ShadowResponse
-		err error
-	)
-	inbox := durableNATSFilter.conn.NewRespInbox()
-	var wg sync.WaitGroup
-	subs, err := durableNATSFilter.conn.Subscribe(inbox, func(msg *nats.Msg) {
-		go func() {
-			defer wg.Done()
-			res, err = MsgToResponse(msg)
-		}()
-	})
-	if err != nil {
-		return false, nil, err
-	}
-	err = subs.AutoUnsubscribe(1)
-	if err != nil {
-		return false, nil, err
-	}
-	req, err := c(netio.WithContext(ctx))
-	if err != nil {
-		return false, nil, err
-	}
-	data, err := io.ReadAll(req.Body)
-	if err != nil {
-		return false, nil, err
-	}
-	m := &nats.Msg{
-		Subject: durableNATSFilter.Subject,
-		Header:  nats.Header{},
-		Data:    data,
-	}
-	headers := headers.Header(req.Header.Clone())
-	headers.SetReflector(DURABLE_CHANNEL)
-	headers.SetReply(inbox)
-	err = headers.Export(m.Header)
-	if err != nil {
-		return false, nil, err
-	}
-	err = durableNATSFilter.queue.PushMsg(m)
-	if err != nil {
-		return false, nil, err
-	}
-	wg.Wait()
-	return false, res.Response, err
-}
-
-func NewCoreNATSFilter(f *BaseNATS) (*CoreNATSFilter, error) {
-	conn, err := GetConn(f.Host, nil)
-	if err != nil {
-		return nil, err
 	}
 
-	natsFilter := new(CoreNATSFilter)
-	natsFilter.BaseNATS = f
-	natsFilter.conn = conn
-	f.instance = natsFilter
-	return natsFilter, nil
-}
-
-func (coreNATSFilter *CoreNATSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Response, error) {
-	var (
-		res *netio.ShadowResponse
-		err error
-	)
-	inbox := coreNATSFilter.conn.NewRespInbox()
-	var wg sync.WaitGroup
-	subs, err := coreNATSFilter.conn.Subscribe(inbox, func(m *nats.Msg) {
-		go func() {
-			defer func() {
-				go func() {
-					shadowRequest, err := MsgToRequest(m)
-					if err != nil {
-						log.Println(err)
-					}
-					netio.Cascade(shadowRequest, coreNATSFilter.Callers...)
-				}()
-			}()
-			defer wg.Done()
-			res, err = MsgToResponse(m)
-		}()
-	})
-	if err != nil {
-		return false, nil, err
-	}
-	err = subs.AutoUnsubscribe(1)
-	if err != nil {
-		return false, nil, err
-	}
-	req, err := c(netio.WithContext(ctx))
-	if err != nil {
-		return false, nil, err
-	}
-	data, err := io.ReadAll(req.Body)
-	if err != nil {
-		return false, nil, err
-	}
-	err = coreNATSFilter.conn.PublishMsg(&nats.Msg{
-		Subject: coreNATSFilter.Subject,
-		Reply:   inbox,
-		Header:  nats.Header(req.Header.Clone()),
-		Data:    data,
-	})
-	if err != nil {
-		return false, nil, err
-	}
-	wg.Wait()
-	return false, res.Response, err
 }
