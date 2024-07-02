@@ -153,7 +153,7 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Re
 	if err != nil {
 		return false, nil, err
 	}
-	m := &nats.Msg{
+	msg := &nats.Msg{
 		Subject: f.Subject,
 		Header:  nats.Header{},
 		Data:    data,
@@ -161,11 +161,11 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Re
 	hdr := headers.Header(req.Header.Clone())
 	hdr.SetReflector(DURABLE_CHANNEL)
 	hdr.SetReply(inbox)
-	err = hdr.Export(m.Header)
+	err = hdr.Export(msg.Header)
 	if err != nil {
 		return false, nil, err
 	}
-	err = f.queue.PushMsg(m)
+	err = f.queue.PushMsg(msg)
 	if err != nil {
 		return false, nil, err
 	}
