@@ -18,19 +18,19 @@ import (
 )
 
 type (
-	BaseNats struct {
+	NatsBase struct {
 		*Filter
 		Host    string
 		Subject string
 		conn    *nats.Conn
 	}
 	NatsJSFilter struct {
-		*BaseNats
+		*NatsBase
 		queue *queue.Queue
 	}
 
 	NatsCoreFilter struct {
-		*BaseNats
+		*NatsBase
 	}
 )
 
@@ -94,21 +94,21 @@ func MsgToResponse(m *nats.Msg) (*netio.ShadowResponse, error) {
 	return netio.NewShandowResponse(&res)
 }
 
-func NewBaseNATS(f *Filter) *BaseNats {
+func NewBaseNATS(f *Filter) *NatsBase {
 	host := f.Address.Host
 	if strings.HasPrefix(host, "[[") && strings.HasSuffix(host, "]]") {
 		host = strings.TrimLeft(host, "[")
 		host = strings.TrimRight(host, "]")
 		host = os.Getenv(host)
 	}
-	baseNATS := new(BaseNats)
+	baseNATS := new(NatsBase)
 	baseNATS.Filter = f
 	baseNATS.Host = host
 	baseNATS.Subject = f.Address.Path
 	return baseNATS
 }
 
-func NewDurableNATSFilter(f *BaseNats) (*NatsJSFilter, error) {
+func NewDurableNATSFilter(f *NatsBase) (*NatsJSFilter, error) {
 	conn, err := GetConn(f.Host, CreateReflectorChannel(f))
 	if err != nil {
 		return nil, err
@@ -118,7 +118,7 @@ func NewDurableNATSFilter(f *BaseNats) (*NatsJSFilter, error) {
 		return nil, err
 	}
 	natsFilter := new(NatsJSFilter)
-	natsFilter.BaseNats = f
+	natsFilter.NatsBase = f
 	natsFilter.conn = conn
 	natsFilter.queue = queue
 	f.instance = natsFilter
@@ -173,14 +173,14 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.Re
 	return false, res.Response, err
 }
 
-func NewCoreNATSFilter(f *BaseNats) (*NatsCoreFilter, error) {
+func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
 	conn, err := GetConn(f.Host, nil)
 	if err != nil {
 		return nil, err
 	}
 
 	natsFilter := new(NatsCoreFilter)
-	natsFilter.BaseNats = f
+	natsFilter.NatsBase = f
 	natsFilter.conn = conn
 	f.instance = natsFilter
 	return natsFilter, nil
@@ -236,7 +236,7 @@ func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (bool, *http.
 	return false, res.Response, err
 }
 
-func CreateReflectorChannel(f *BaseNats) func(c *nats.Conn) error {
+func CreateReflectorChannel(f *NatsBase) func(c *nats.Conn) error {
 	return func(c *nats.Conn) error {
 		queue, err := queue.New(c, []string{DURABLE_CHANNEL})
 		if err != nil {
