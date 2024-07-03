@@ -132,7 +132,7 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 		if res == nil {
 			continue
 		}
-		out, err = createOrUpdateResponse(out, res, append(cal.GetResponseUpdaters(), ResUpdateHeader("X-Request-Id")))
+		out, err = createOrUpdateResponse(out, res, cal.GetResponseUpdaters())
 		if err != nil {
 			return nil, err
 		}
