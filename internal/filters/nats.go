@@ -104,7 +104,7 @@ func NewBaseNATS(f *Filter) *NatsBase {
 	baseNATS := new(NatsBase)
 	baseNATS.Filter = f
 	baseNATS.Host = host
-	baseNATS.Subject = f.Address.Path
+	baseNATS.Subject = strings.TrimPrefix(f.Address.Path, "/")
 	return baseNATS
 }
 
@@ -222,7 +222,7 @@ func (f *NatsCoreFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowR
 			return
 		}
 		clone.Header = nats.Header(headers)
-		res, err := MsgToResponse(msg)
+		res, err := MsgToResponse(&clone)
 		if err != nil {
 			errCh <- err
 			return

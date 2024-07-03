@@ -13,13 +13,16 @@ import (
 func main() {
 	target, _ := url.Parse("https://www.google.com")
 	proxy := proxies.NewHttpProxy(target, nil)
-	callback, _ := url.Parse("http://127.0.0.1:8081")
+	callback, _ := url.Parse("nats://127.0.0.1:4222/test")
 	f := filters.NewFilter()
 	f.Address = callback
 	f.Level = netio.LEVEL_REQUEST
-	f.SetExchangeHeaders([]string{"X-Test-Header"})
+	f.SetExchangeHeaders([]string{"X-Test-Header", "New-Header"})
 	f.SetExchangeBody()
-	filter := filters.NewHttpFilter(f)
+	filter, err := filters.NewCoreNATSFilter(filters.NewBaseNATS(f))
+	if err != nil {
+		panic(err)
+	}
 	server.HandleFunc("/", func(w http.ResponseWriter, r *http.Request, rv server.RouteValues) {
 		shadowRequest, err := netio.NewShadowRequest(r)
 		if err != nil {

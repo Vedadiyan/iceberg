@@ -106,7 +106,7 @@ func ResReplaceTailer(keys ...string) ResponseUpdater {
 }
 
 func (shadowResponse *ShadowResponse) Reset() {
-	(*shadowResponse.Request).Body = io.NopCloser(bytes.NewReader(shadowResponse.data))
+	(*shadowResponse.Response).Body = io.NopCloser(bytes.NewReader(shadowResponse.data))
 }
 
 func (shadowResponse *ShadowResponse) CreateRequest() (*ShadowRequest, error) {
@@ -127,11 +127,12 @@ func (shadowResponse *ShadowResponse) CloneResponse() (*http.Response, error) {
 }
 
 func (shadowResponse *ShadowResponse) Write(w http.ResponseWriter) {
+	shadowResponse.Response.Header.Del("Content-Length")
+	shadowResponse.Response.Header.Del("Content-Encoding")
 	for key, values := range shadowResponse.Response.Header {
 		for _, value := range values {
 			w.Header().Add(key, value)
 		}
 	}
-	w.Header().Del("Content-Length")
 	_, _ = w.Write(shadowResponse.data)
 }

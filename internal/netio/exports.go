@@ -95,6 +95,9 @@ func Sort(callers ...Caller) []Caller {
 }
 
 func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
+	if callers == nil {
+		return nil, nil
+	}
 	var (
 		out *ShadowResponse
 		mut sync.RWMutex
