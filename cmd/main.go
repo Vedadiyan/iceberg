@@ -4,36 +4,26 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/netio"
 	"github.com/vedadiyan/iceberg/internal/proxies"
+	"github.com/vedadiyan/iceberg/internal/server"
 )
 
 func main() {
-	filterUrl, err := url.Parse("http://127.0.0.1:8081")
-	if err != nil {
-		panic(err)
-	}
-	targetUrl, err := url.Parse("http://www.google.com")
-	if err != nil {
-		panic(err)
-	}
-	filter := filters.NewHttpFilter(&filters.Filter{
-		Address: filterUrl,
-		Level:   2,
+	url, _ := url.Parse("https://www.google.com")
+	proxy := proxies.NewHttpProxy(url, nil)
+	server.HandleFunc("/", func(w http.ResponseWriter, r *http.Request, rv server.RouteValues) {
+		shadowRequest, err := netio.NewShadowRequest(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		shadowRequest.RouteValues = netio.RouteValues(rv)
+		res, _err := netio.Cascade(shadowRequest, proxy)
+		if _err != nil {
+			http.Error(w, _err.Message(), _err.Status())
+		}
+		res.Write(w)
 	})
-	proxy := proxies.NewHttpProxy(targetUrl, []netio.Caller{filter})
-	_ = proxy
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		proxy.Handle(w, r)
-	})
-	http.ListenAndServe(":8080", nil)
-}
 
-func CreateRequest(r *http.Request) (*netio.ShadowRequest, error) {
-	shadowReequest, err := netio.NewShadowRequest(r)
-	if err != nil {
-		return nil, err
-	}
-	return shadowReequest, nil
+	server.ListenAndServe(":8080")
 }

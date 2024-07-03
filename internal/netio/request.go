@@ -12,8 +12,8 @@ type (
 	RouteValues   map[string]string
 	ShadowRequest struct {
 		*http.Request
-		RouteValue RouteValues
-		data       []byte
+		RouteValues RouteValues
+		data        []byte
 	}
 	RequestOption  func(*http.Request)
 	RequestUpdater func(*ShadowRequest, *http.Request) error
