@@ -283,7 +283,10 @@ func CreateReflectorChannel(f *NatsBase) func(c *nats.Conn) error {
 			}
 			m.Subject = reply
 			headers.DeleteReply()
-			headers.Export(clone.Header)
+			err = headers.Export(clone.Header)
+			if err != nil {
+				return err
+			}
 			return c.PublishMsg(&clone)
 		}
 		callbacks := func(msg *nats.Msg) {

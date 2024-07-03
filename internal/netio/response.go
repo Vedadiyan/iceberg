@@ -133,5 +133,5 @@ func (shadowResponse *ShadowResponse) Write(w http.ResponseWriter) {
 		}
 	}
 	w.Header().Del("Content-Length")
-	w.Write(shadowResponse.data)
+	_, _ = w.Write(shadowResponse.data)
 }
