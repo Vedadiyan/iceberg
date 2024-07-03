@@ -54,7 +54,11 @@ func (f *HttpProxy) GetIsParallel() bool {
 
 func (f *HttpProxy) GetContext() context.Context {
 	ctx, cancel := context.WithCancel(context.TODO())
-	time.AfterFunc(time.Until(time.Now().Add(f.Timeout)), func() {
+	timeout := f.Timeout
+	if timeout == 0 {
+		timeout = time.Second * 30
+	}
+	time.AfterFunc(time.Until(time.Now().Add(timeout)), func() {
 		cancel()
 	})
 	return ctx

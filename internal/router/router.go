@@ -19,7 +19,7 @@ type (
 		configs map[string]HandlerFunc
 	}
 	Route struct {
-		host        string
+		path        string
 		method      string
 		routeValues map[int]string
 		routeParams map[int]string
@@ -79,7 +79,7 @@ func ParseRoute(url *url.URL, method string) *Route {
 
 	hash := CreateHash(url, method)
 	route := Route{
-		host:        url.Host,
+		path:        url.Path,
 		routeValues: routeValues,
 		routeParams: routeParams,
 		method:      strings.ToUpper(method),
@@ -92,7 +92,7 @@ func RouteCompare(preferredRoute *Route, route *Route) int {
 	if len(preferredRoute.routeValues) != len(route.routeValues) {
 		return 0
 	}
-	rank := 0
+	rank := 1
 	for key, value := range preferredRoute.routeValues {
 		if value == "?" {
 			rank += 1
