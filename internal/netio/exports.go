@@ -149,47 +149,48 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 }
 
 func await(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest, out *ShadowResponse) Error {
-	if len(cal.GetAwaitList()) != 0 {
-		for _, task := range cal.GetAwaitList() {
-			var err Error
-			mut.RLocker()
-			ch, chFound := tsks[task]
-			ctx, ctxFound := ctxs[task]
-			mut.RUnlock()
-			if !chFound || !ctxFound {
-				return NewError("task not found", http.StatusInternalServerError)
-			}
-			var cr *Response
-			select {
-			case cr = <-ch:
-				{
-					break
-				}
-			case <-ctx.Done():
-				{
-					cr = &Response{
-						Error: NewError(context.DeadlineExceeded.Error(), http.StatusGatewayTimeout),
-					}
-				}
-			}
-			if cr.Error != nil {
-				return cr.Error
-			}
-			out, err = createOrUpdateResponse(out, cr.Response, cal.GetResponseUpdaters())
-			if err != nil {
-				return err
-			}
-			tmp, _err := out.CreateRequest()
-			if _err != nil {
-				return NewError(_err.Error(), http.StatusInternalServerError)
-			}
-
-			_err = UpdateRequest(in, tmp.Request, cal.GetRequestUpdaters())
-			if _err != nil {
-				return NewError(_err.Error(), http.StatusInternalServerError)
-			}
-			in.Reset()
+	if cal.GetAwaitList() == nil {
+		return nil
+	}
+	for _, task := range cal.GetAwaitList() {
+		var err Error
+		mut.RLocker()
+		ch, chFound := tsks[task]
+		ctx, ctxFound := ctxs[task]
+		mut.RUnlock()
+		if !chFound || !ctxFound {
+			return NewError("task not found", http.StatusInternalServerError)
 		}
+		var cr *Response
+		select {
+		case cr = <-ch:
+			{
+				break
+			}
+		case <-ctx.Done():
+			{
+				cr = &Response{
+					Error: NewError(context.DeadlineExceeded.Error(), http.StatusGatewayTimeout),
+				}
+			}
+		}
+		if cr.Error != nil {
+			return cr.Error
+		}
+		out, err = createOrUpdateResponse(out, cr.Response, cal.GetResponseUpdaters())
+		if err != nil {
+			return err
+		}
+		tmp, _err := out.CreateRequest()
+		if _err != nil {
+			return NewError(_err.Error(), http.StatusInternalServerError)
+		}
+
+		_err = UpdateRequest(in, tmp.Request, cal.GetRequestUpdaters())
+		if _err != nil {
+			return NewError(_err.Error(), http.StatusInternalServerError)
+		}
+		in.Reset()
 	}
 	return nil
 }

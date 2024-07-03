@@ -27,6 +27,9 @@ func NewShandowResponse(response *http.Response) (*ShadowResponse, error) {
 }
 
 func UpdateResponse(shadowResponse *ShadowResponse, response *http.Response, requestUpdater []ResponseUpdater) error {
+	if requestUpdater == nil {
+		return nil
+	}
 	for _, fn := range requestUpdater {
 		err := fn(shadowResponse, response)
 		if err != nil {

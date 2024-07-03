@@ -115,6 +115,9 @@ func NewShadowRequest(request *http.Request) (*ShadowRequest, error) {
 }
 
 func UpdateRequest(shadowRequest *ShadowRequest, request *http.Request, requestUpdater []RequestUpdater) error {
+	if requestUpdater == nil {
+		return nil
+	}
 	for _, fn := range requestUpdater {
 		err := fn(shadowRequest, request)
 		if err != nil {

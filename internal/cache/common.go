@@ -59,11 +59,11 @@ func (c *Cache) ParseKey(r *http.Request) (string, error) {
 }
 
 func (c *Cache) GetRequestUpdaters() []netio.RequestUpdater {
-	return []netio.RequestUpdater{}
+	return nil
 }
 
 func (c *Cache) GetResponseUpdaters() []netio.ResponseUpdater {
-	return []netio.ResponseUpdater{}
+	return nil
 }
 
 func (c *Cache) GetName() string {
@@ -71,7 +71,7 @@ func (c *Cache) GetName() string {
 }
 
 func (c *Cache) GetAwaitList() []string {
-	return []string{}
+	return nil
 }
 
 func (c *Cache) GetIsParallel() bool {
