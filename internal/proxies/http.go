@@ -64,7 +64,7 @@ func (f *HttpProxy) GetLevel() netio.Level {
 	return netio.LEVEL_NONE
 }
 
-func (f *HttpProxy) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+func (f *HttpProxy) Call(ctx context.Context, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
 	r, err := c(netio.WithUrl(f.Address), netio.WithContext(ctx))
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)

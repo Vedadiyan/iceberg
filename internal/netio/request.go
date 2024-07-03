@@ -144,3 +144,20 @@ func (shadowRequest *ShadowRequest) CloneRequest(options ...RequestOption) (*htt
 	}
 	return req, nil
 }
+
+func (shadowRequest *ShadowRequest) CloneShadowRequest(options ...RequestOption) (*ShadowRequest, error) {
+	r := shadowRequest.Request
+	req := new(http.Request)
+	req.Header = cloneHeader(r.Header)
+	req.Trailer = cloneHeader(r.Trailer)
+	req.Form = cloneURLValues(r.Form)
+	req.PostForm = cloneURLValues(r.PostForm)
+	req.TransferEncoding = cloneTransferEncoding(r.TransferEncoding)
+	req.Body = io.NopCloser(bytes.NewReader(shadowRequest.data))
+	req.URL = cloneURL(r.URL)
+	req.MultipartForm = cloneMultipartForm(r.MultipartForm)
+	for _, option := range options {
+		option(req)
+	}
+	return NewShadowRequest(req)
+}

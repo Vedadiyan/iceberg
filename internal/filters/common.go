@@ -99,8 +99,8 @@ func (f *Filter) SetExchangeBody(headers []string) {
 	}
 }
 
-func (f *Filter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, netio.Error) {
-	return f.instance.Call(ctx, c)
+func (f *Filter) Call(ctx context.Context, c netio.Cloner, o netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+	return f.instance.Call(ctx, c, o)
 }
 
 func Await(resCh <-chan *netio.ShadowResponse, errCh <-chan error, ctx context.Context) (netio.Next, *http.Response, netio.Error) {

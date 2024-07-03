@@ -25,7 +25,7 @@ type (
 		GetIsParallel() bool
 		GetName() string
 		GetAwaitList() []string
-		Call(context.Context, Cloner) (Next, *http.Response, Error)
+		Call(context.Context, Cloner, Cloner) (Next, *http.Response, Error)
 		GetRequestUpdaters() []RequestUpdater
 		GetResponseUpdaters() []ResponseUpdater
 		GetContext() context.Context
@@ -88,16 +88,20 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 	in.Header.Add("X-Request-Id", uuid.New().String())
 	tasks := make(map[string]<-chan *Response)
 	ctx := make(map[string]context.Context)
+	or, err := in.CloneShadowRequest()
+	if err != nil {
+		return nil, NewError(err.Error(), http.StatusInternalServerError)
+	}
 	for _, cal := range callers {
 		err := await(cal, &mut, ctx, tasks, in, out)
 		if err != nil {
 			return nil, err
 		}
 		if cal.GetIsParallel() {
-			spin(cal, &mut, ctx, tasks, in)
+			spin(cal, &mut, ctx, tasks, in, or)
 			continue
 		}
-		term, res, err := cal.Call(cal.GetContext(), in.CloneRequest)
+		term, res, err := cal.Call(cal.GetContext(), in.CloneRequest, or.CloneRequest)
 		if err != nil {
 			return nil, err
 		}
@@ -107,6 +111,9 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 				return nil, NewError(err.Error(), http.StatusInternalServerError)
 			}
 			return res, nil
+		}
+		if res == nil {
+			continue
 		}
 		out, err = createOrUpdateResponse(out, res, append(cal.GetResponseUpdaters(), ResUpdateHeader("X-Request-Id")))
 		if err != nil {
@@ -173,7 +180,7 @@ func await(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks 
 	return nil
 }
 
-func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest) {
+func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest, or *ShadowRequest) {
 	go func() {
 		ch := make(chan *Response, 1)
 		defer close(ch)
@@ -181,7 +188,7 @@ func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks m
 		tsks[cal.GetName()] = ch
 		ctxs[cal.GetName()] = cal.GetContext()
 		mut.Unlock()
-		_, r, err := cal.Call(cal.GetContext(), in.CloneRequest)
+		_, r, err := cal.Call(cal.GetContext(), in.CloneRequest, or.CloneRequest)
 		if err != nil {
 			ch <- &Response{
 				Error: err,
