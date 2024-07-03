@@ -128,7 +128,6 @@ func (shadowResponse *ShadowResponse) CloneResponse() (*http.Response, error) {
 
 func (shadowResponse *ShadowResponse) Write(w http.ResponseWriter) {
 	shadowResponse.Response.Header.Del("Content-Length")
-	shadowResponse.Response.Header.Del("Content-Encoding")
 	for key, values := range shadowResponse.Response.Header {
 		for _, value := range values {
 			w.Header().Add(key, value)
