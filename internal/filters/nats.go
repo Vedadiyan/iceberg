@@ -215,6 +215,13 @@ func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, 
 
 func (f *NatsCoreFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowResponse, errCh chan<- error) error {
 	handle := func(msg *nats.Msg) {
+		clone := *msg
+		headers, err := headers.Import(clone.Header)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		clone.Header = nats.Header(headers)
 		res, err := MsgToResponse(msg)
 		if err != nil {
 			errCh <- err
