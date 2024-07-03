@@ -125,7 +125,7 @@ func NewDurableNATSFilter(f *NatsBase) (*NatsJSFilter, error) {
 	return nf, nil
 }
 
-func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+func (f *NatsJSFilter) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
 	inbox := f.conn.NewRespInbox()
 	resCh := make(chan *netio.ShadowResponse, 1)
 	errCh := make(chan error, 1)
@@ -196,7 +196,7 @@ func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
 	return nf, nil
 }
 
-func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+func (f *NatsCoreFilter) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
 	inbox := f.conn.NewRespInbox()
 	resCh := make(chan *netio.ShadowResponse, 1)
 	errCh := make(chan error, 1)

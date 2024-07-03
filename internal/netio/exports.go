@@ -25,7 +25,7 @@ type (
 		GetIsParallel() bool
 		GetName() string
 		GetAwaitList() []string
-		Call(context.Context, Cloner, Cloner) (Next, *http.Response, Error)
+		Call(context.Context, RouteValues, Cloner, Cloner) (Next, *http.Response, Error)
 		GetRequestUpdaters() []RequestUpdater
 		GetResponseUpdaters() []ResponseUpdater
 		GetContext() context.Context
@@ -115,7 +115,7 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 			spin(cal, &mut, ctx, tasks, in, or)
 			continue
 		}
-		term, res, err := cal.Call(cal.GetContext(), in.CloneRequest, or.CloneRequest)
+		term, res, err := cal.Call(cal.GetContext(), or.RouteValue, in.CloneRequest, or.CloneRequest)
 		if err != nil {
 			return nil, err
 		}
@@ -203,7 +203,7 @@ func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks m
 		tsks[cal.GetName()] = ch
 		ctxs[cal.GetName()] = cal.GetContext()
 		mut.Unlock()
-		_, r, err := cal.Call(cal.GetContext(), in.CloneRequest, or.CloneRequest)
+		_, r, err := cal.Call(cal.GetContext(), or.RouteValue, in.CloneRequest, or.CloneRequest)
 		if err != nil {
 			ch <- &Response{
 				Error: err,
