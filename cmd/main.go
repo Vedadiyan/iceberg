@@ -18,7 +18,7 @@ func main() {
 	f.Address = callback
 	f.Level = netio.LEVEL_REQUEST
 	f.SetExchangeHeaders([]string{"X-Test-Header", "New-Header"})
-	f.SetExchangeBody()
+	// f.SetExchangeBody()
 	filter, err := filters.NewCoreNATSFilter(filters.NewBaseNATS(f))
 	if err != nil {
 		panic(err)

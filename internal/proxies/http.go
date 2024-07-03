@@ -28,7 +28,8 @@ func NewHttpProxy(address *url.URL, callers []netio.Caller) *HttpProxy {
 	httpProxy.Callers = netio.Sort(append(callers, httpProxy)...)
 	httpProxy.ResponseUpdaters = make([]netio.ResponseUpdater, 0)
 	httpProxy.RequestUpdaters = make([]netio.RequestUpdater, 0)
-	httpProxy.ResponseUpdaters = append(httpProxy.ResponseUpdaters, netio.ResReplaceBody(), netio.ResUpdateHeaders(), netio.ResUpdateTailers())
+	httpProxy.RequestUpdaters = append(httpProxy.RequestUpdaters, netio.ReqReplaceBody(), netio.ReqReplaceHeader(), netio.ReqReplaceTailer())
+	httpProxy.ResponseUpdaters = append(httpProxy.ResponseUpdaters, netio.ResReplaceBody(), netio.ResReplaceHeader(), netio.ResReplaceTailer())
 	return httpProxy
 }
 
@@ -77,6 +78,7 @@ func (f *HttpProxy) Call(ctx context.Context, _ netio.RouteValues, c netio.Clone
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusBadGateway)
 	}
+	res.Header.Add("X-Request-Id", r.Header.Get("X-Request-Id"))
 	return netio.CONTINUE, res, nil
 }
 
