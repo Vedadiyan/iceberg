@@ -257,12 +257,18 @@ func (f *NatsCoreFilter) Publish(inbox string, c netio.Cloner) error {
 	if err != nil {
 		return err
 	}
-	return f.conn.PublishMsg(&nats.Msg{
+	msg := &nats.Msg{
 		Subject: f.Subject,
 		Reply:   inbox,
-		Header:  nats.Header(req.Header.Clone()),
+		Header:  nats.Header{},
 		Data:    data,
-	})
+	}
+	hdr := headers.Header(req.Header.Clone())
+	err = hdr.Export(msg.Header)
+	if err != nil {
+		return err
+	}
+	return f.conn.PublishMsg(msg)
 }
 
 func CreateReflectorChannel(f *NatsBase) func(c *nats.Conn) error {

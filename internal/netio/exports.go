@@ -40,12 +40,12 @@ const (
 	TERM     Next = true
 	CONTINUE Next = false
 
-	LEVEL_NONE     Level = 0
-	LEVEL_CONNECT  Level = 1
-	LEVEL_PRE      Level = 2
-	LEVEL_REQUEST  Level = 4
-	LEVEL_RESPONSE Level = 8
-	LEVEL_POST     Level = 16
+	LEVEL_NONE     Level = 1
+	LEVEL_CONNECT  Level = 2
+	LEVEL_PRE      Level = 4
+	LEVEL_REQUEST  Level = 8
+	LEVEL_RESPONSE Level = 16
+	LEVEL_POST     Level = 32
 )
 
 func NewError(message string, status int) Error {
