@@ -55,7 +55,11 @@ func (f *Filter) GetIsParallel() bool {
 
 func (f *Filter) GetContext() context.Context {
 	ctx, cancel := context.WithCancel(context.TODO())
-	time.AfterFunc(time.Until(time.Now().Add(f.Timeout)), func() {
+	timeout := f.Timeout
+	if timeout == 0 {
+		timeout = time.Second * 30
+	}
+	time.AfterFunc(time.Until(time.Now().Add(timeout)), func() {
 		cancel()
 	})
 	return ctx
@@ -86,7 +90,7 @@ func (f *Filter) SetExchangeHeaders(headers []string) {
 	}
 }
 
-func (f *Filter) SetExchangeBody(headers []string) {
+func (f *Filter) SetExchangeBody() {
 	switch f.Level {
 	case netio.LEVEL_CONNECT, netio.LEVEL_REQUEST:
 		{
