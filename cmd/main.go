@@ -16,11 +16,13 @@ func main() {
 		shadowRequest, err := netio.NewShadowRequest(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 		shadowRequest.RouteValues = netio.RouteValues(rv)
 		res, _err := netio.Cascade(shadowRequest, proxy)
 		if _err != nil {
 			http.Error(w, _err.Message(), _err.Status())
+			return
 		}
 		res.Write(w)
 	})
