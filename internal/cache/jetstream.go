@@ -63,12 +63,12 @@ func (f *JetStreamGet) GetLevel() netio.Level {
 	return netio.LEVEL_PRE
 }
 
-func (f *JetStreamGet) Call(ctx context.Context, _ netio.Cloner, o netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+func (f *JetStreamGet) Call(ctx context.Context, rv netio.RouteValues, _ netio.Cloner, o netio.Cloner) (netio.Next, *http.Response, netio.Error) {
 	req, err := o()
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
-	key, err := f.ParseKey(req)
+	key, err := f.ParseKey(req, rv)
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
@@ -90,12 +90,12 @@ func (f *JetStreamSet) GetLevel() netio.Level {
 	return netio.LEVEL_POST
 }
 
-func (f *JetStreamSet) Call(ctx context.Context, c netio.Cloner, o netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+func (f *JetStreamSet) Call(ctx context.Context, rv netio.RouteValues, c netio.Cloner, o netio.Cloner) (netio.Next, *http.Response, netio.Error) {
 	req, err := o()
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
-	key, err := f.ParseKey(req)
+	key, err := f.ParseKey(req, rv)
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}

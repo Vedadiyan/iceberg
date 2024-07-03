@@ -33,10 +33,9 @@ func init() {
 	gob.Register(Response{})
 }
 
-func (c *Cache) ParseKey(r *http.Request) (string, error) {
-	routeValues := c.Route.Bind(router.ParseRoute(r.URL, "*"))
+func (c *Cache) ParseKey(r *http.Request, rv netio.RouteValues) (string, error) {
 	cacheKey := strings.ToLower(c.KeyTemplate)
-	for key, value := range routeValues {
+	for key, value := range rv {
 		cacheKey = strings.ReplaceAll(cacheKey, fmt.Sprintf("${:%s}", strings.ToLower(key)), value)
 	}
 	for key, value := range r.URL.Query() {
