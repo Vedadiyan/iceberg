@@ -221,7 +221,9 @@ func (f *NatsCoreFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowR
 			errCh <- err
 			return
 		}
-		clone.Header = nats.Header(headers)
+		if len(headers) > 0 {
+			clone.Header = nats.Header(headers)
+		}
 		res, err := MsgToResponse(&clone)
 		if err != nil {
 			errCh <- err
