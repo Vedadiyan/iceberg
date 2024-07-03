@@ -64,26 +64,26 @@ func (f *HttpProxy) GetLevel() netio.Level {
 	return netio.LEVEL_NONE
 }
 
-func (f *HttpProxy) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
+func (f *HttpProxy) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, *netio.Error) {
 	r, err := c(netio.WithUrl(f.Address), netio.WithContext(ctx))
 	if err != nil {
-		return netio.TERM, nil, err
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
 	res, err := http.DefaultClient.Do(r)
 	if err != nil {
-		return netio.TERM, nil, err
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusBadGateway)
 	}
 	return netio.CONTINUE, res, nil
 }
 
-func (f *HttpProxy) Handle(r *http.Request) (*http.Response, error) {
+func (f *HttpProxy) Handle(w http.ResponseWriter, r *http.Request) {
 	in, err := netio.NewShadowRequest(r)
 	if err != nil {
-		return nil, err
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	out, err := netio.Cascade(in, f.Callers...)
-	if err != nil {
-		return nil, err
+	out, _err := netio.Cascade(in, f.Callers...)
+	if _err != nil {
+		http.Error(w, _err.Message, _err.Status)
 	}
-	return out.Response, nil
+	out.Write(w)
 }

@@ -103,7 +103,7 @@ func (f *Filter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Re
 	return f.instance.Call(ctx, c)
 }
 
-func Await(resCh <-chan *netio.ShadowResponse, errCh <-chan error, ctx context.Context) (netio.Next, *http.Response, error) {
+func Await(resCh <-chan *netio.ShadowResponse, errCh <-chan error, ctx context.Context) (netio.Next, *http.Response, *netio.Error) {
 	select {
 	case res := <-resCh:
 		{
@@ -111,11 +111,11 @@ func Await(resCh <-chan *netio.ShadowResponse, errCh <-chan error, ctx context.C
 		}
 	case err := <-errCh:
 		{
-			return netio.TERM, nil, err
+			return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 		}
 	case <-ctx.Done():
 		{
-			return netio.TERM, nil, context.DeadlineExceeded
+			return netio.TERM, nil, netio.NewError(context.DeadlineExceeded.Error(), http.StatusGatewayTimeout)
 		}
 	}
 }

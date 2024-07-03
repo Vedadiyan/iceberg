@@ -25,11 +25,7 @@ func main() {
 	proxy := proxies.NewHttpProxy(targetUrl, []netio.Caller{filter})
 	_ = proxy
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		res, err := proxy.Handle(r)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadGateway)
-		}
-		res.Write(w)
+		proxy.Handle(w, r)
 	})
 	http.ListenAndServe(":8080", nil)
 }

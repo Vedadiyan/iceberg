@@ -125,7 +125,7 @@ func NewDurableNATSFilter(f *NatsBase) (*NatsJSFilter, error) {
 	return nf, nil
 }
 
-func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
+func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, *netio.Error) {
 	inbox := f.conn.NewRespInbox()
 	resCh := make(chan *netio.ShadowResponse, 1)
 	errCh := make(chan error, 1)
@@ -133,11 +133,11 @@ func (f *NatsJSFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *h
 	defer close(errCh)
 	err := f.SubscribeOnce(inbox, resCh, errCh)
 	if err != nil {
-		return netio.TERM, nil, err
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
 	err = f.Publish(inbox, c)
 	if err != nil {
-		return netio.TERM, nil, err
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusBadGateway)
 	}
 	return Await(resCh, errCh, ctx)
 }
@@ -196,7 +196,7 @@ func NewCoreNATSFilter(f *NatsBase) (*NatsCoreFilter, error) {
 	return nf, nil
 }
 
-func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
+func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, *netio.Error) {
 	inbox := f.conn.NewRespInbox()
 	resCh := make(chan *netio.ShadowResponse, 1)
 	errCh := make(chan error, 1)
@@ -204,11 +204,11 @@ func (f *NatsCoreFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, 
 	defer close(errCh)
 	err := f.SubscribeOnce(inbox, resCh, errCh)
 	if err != nil {
-		return netio.TERM, nil, err
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
 	err = f.Publish(inbox, c)
 	if err != nil {
-		return netio.TERM, nil, err
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusBadGateway)
 	}
 	return Await(resCh, errCh, ctx)
 }

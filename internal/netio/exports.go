@@ -2,7 +2,6 @@ package netio
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"sync"
 
@@ -15,14 +14,18 @@ type (
 	Cloner   func(options ...RequestOption) (*http.Request, error)
 	Response struct {
 		*http.Response
-		error
+		*Error
+	}
+	Error struct {
+		Message string
+		Status  int
 	}
 	Caller interface {
 		GetLevel() Level
 		GetIsParallel() bool
 		GetName() string
 		GetAwaitList() []string
-		Call(context.Context, Cloner) (Next, *http.Response, error)
+		Call(context.Context, Cloner) (Next, *http.Response, *Error)
 		GetRequestUpdaters() []RequestUpdater
 		GetResponseUpdaters() []ResponseUpdater
 		GetContext() context.Context
@@ -38,6 +41,10 @@ const (
 	LEVEL_REQUEST  Level = 2
 	LEVEL_RESPONSE Level = 4
 )
+
+func NewError(message string, status int) *Error {
+	panic("")
+}
 
 func Sort(callers ...Caller) []Caller {
 	main := make([]Caller, 0)
@@ -66,7 +73,7 @@ func Sort(callers ...Caller) []Caller {
 	return final
 }
 
-func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
+func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, *Error) {
 	var (
 		out *ShadowResponse
 		mut sync.RWMutex
@@ -88,20 +95,24 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 			return nil, err
 		}
 		if term {
-			return NewShandowResponse(res)
+			res, err := NewShandowResponse(res)
+			if err != nil {
+				return nil, NewError(err.Error(), http.StatusInternalServerError)
+			}
+			return res, nil
 		}
 		out, err = createOrUpdateResponse(out, res, append(cal.GetResponseUpdaters(), ResUpdateHeader("X-Request-Id")))
 		if err != nil {
 			return nil, err
 		}
-		tmp, err := out.CreateRequest()
-		if err != nil {
-			return nil, err
+		tmp, _err := out.CreateRequest()
+		if _err != nil {
+			return nil, NewError(_err.Error(), http.StatusInternalServerError)
 		}
 
-		err = UpdateRequest(in, tmp.Request, append(cal.GetRequestUpdaters(), ReqUpdateHeader("X-Request-Id")))
-		if err != nil {
-			return nil, err
+		_err = UpdateRequest(in, tmp.Request, append(cal.GetRequestUpdaters(), ReqUpdateHeader("X-Request-Id")))
+		if _err != nil {
+			return nil, NewError(_err.Error(), http.StatusInternalServerError)
 		}
 		in.Reset()
 	}
@@ -109,16 +120,16 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, error) {
 	return out, nil
 }
 
-func await(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest, out *ShadowResponse) error {
+func await(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest, out *ShadowResponse) *Error {
 	if len(cal.GetAwaitList()) != 0 {
 		for _, task := range cal.GetAwaitList() {
-			var err error
+			var err *Error
 			mut.RLocker()
 			ch, chFound := tsks[task]
 			ctx, ctxFound := ctxs[task]
 			mut.RUnlock()
 			if !chFound || !ctxFound {
-				return fmt.Errorf("task not found")
+				return NewError("task not found", http.StatusInternalServerError)
 			}
 			var cr *Response
 			select {
@@ -129,25 +140,25 @@ func await(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks 
 			case <-ctx.Done():
 				{
 					cr = &Response{
-						error: context.DeadlineExceeded,
+						Error: NewError(context.DeadlineExceeded.Error(), http.StatusGatewayTimeout),
 					}
 				}
 			}
-			if cr.error != nil {
-				return cr.error
+			if cr.Error != nil {
+				return cr.Error
 			}
 			out, err = createOrUpdateResponse(out, cr.Response, cal.GetResponseUpdaters())
 			if err != nil {
 				return err
 			}
-			tmp, err := out.CreateRequest()
-			if err != nil {
-				return err
+			tmp, _err := out.CreateRequest()
+			if _err != nil {
+				return NewError(_err.Error(), http.StatusInternalServerError)
 			}
 
-			err = UpdateRequest(in, tmp.Request, cal.GetRequestUpdaters())
-			if err != nil {
-				return err
+			_err = UpdateRequest(in, tmp.Request, cal.GetRequestUpdaters())
+			if _err != nil {
+				return NewError(_err.Error(), http.StatusInternalServerError)
 			}
 			in.Reset()
 		}
@@ -166,7 +177,7 @@ func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks m
 		_, r, err := cal.Call(cal.GetContext(), in.CloneRequest)
 		if err != nil {
 			ch <- &Response{
-				error: err,
+				Error: err,
 			}
 			return
 		}
@@ -176,14 +187,17 @@ func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks m
 	}()
 }
 
-func createOrUpdateResponse(in *ShadowResponse, res *http.Response, ru []ResponseUpdater) (*ShadowResponse, error) {
+func createOrUpdateResponse(in *ShadowResponse, res *http.Response, ru []ResponseUpdater) (*ShadowResponse, *Error) {
 	if in == nil {
-		return NewShandowResponse(res)
-
+		res, err := NewShandowResponse(res)
+		if err != nil {
+			return nil, NewError(err.Error(), http.StatusInternalServerError)
+		}
+		return res, nil
 	}
 	err := UpdateResponse(in, res, ru)
 	if err != nil {
-		return nil, err
+		return nil, NewError(err.Error(), http.StatusInternalServerError)
 	}
 	in.Reset()
 	return in, nil
