@@ -4,8 +4,10 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"github.com/vedadiyan/iceberg/internal/netio"
 )
 
@@ -25,15 +27,15 @@ type (
 )
 
 var (
-	_conns   map[string]*nats.Conn
+	_conns   map[string]nats.KeyValue
 	_connMut sync.RWMutex
 )
 
 func init() {
-	_conns = make(map[string]*nats.Conn)
+	_conns = make(map[string]nats.KeyValue)
 }
 
-func GetConn(url string, fn func(*nats.Conn) error) (*nats.Conn, error) {
+func GetKV(url string, bucket string, ttl time.Duration) (nats.KeyValue, error) {
 	_connMut.Lock()
 	defer _connMut.Unlock()
 	if conn, ok := _conns[url]; ok {
@@ -43,13 +45,18 @@ func GetConn(url string, fn func(*nats.Conn) error) (*nats.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	if fn != nil {
-		err := fn(conn)
-		if err != nil {
-			return nil, err
-		}
+	js, err := conn.JetStream()
+	if err != nil {
+		return nil, err
 	}
-	return conn, nil
+	kv, err := js.CreateKeyValue(&nats.KeyValueConfig{
+		Bucket: bucket,
+		TTL:    ttl,
+	})
+	if err != nil && err != jetstream.ErrBucketExists {
+		return nil, err
+	}
+	return kv, nil
 }
 
 func (f *JetStreamGet) Call(ctx context.Context, _ netio.Cloner, o netio.Cloner) (netio.Next, *http.Response, netio.Error) {
