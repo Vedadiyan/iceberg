@@ -30,6 +30,10 @@ type (
 		GetResponseUpdaters() []ResponseUpdater
 		GetContext() context.Context
 	}
+	httpError struct {
+		message string
+		status  int
+	}
 )
 
 const (
@@ -43,7 +47,10 @@ const (
 )
 
 func NewError(message string, status int) Error {
-	panic("")
+	return &httpError{
+		message: message,
+		status:  status,
+	}
 }
 
 func Sort(callers ...Caller) []Caller {
@@ -201,4 +208,12 @@ func createOrUpdateResponse(in *ShadowResponse, res *http.Response, ru []Respons
 	}
 	in.Reset()
 	return in, nil
+}
+
+func (httpError *httpError) Message() string {
+	return httpError.message
+}
+
+func (httpError *httpError) Status() int {
+	return httpError.status
 }
