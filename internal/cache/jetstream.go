@@ -27,18 +27,18 @@ type (
 )
 
 var (
-	_conns   map[string]nats.KeyValue
-	_connMut sync.RWMutex
+	_kvs   map[string]nats.KeyValue
+	_kvMut sync.RWMutex
 )
 
 func init() {
-	_conns = make(map[string]nats.KeyValue)
+	_kvs = make(map[string]nats.KeyValue)
 }
 
 func GetKV(url string, bucket string, ttl time.Duration) (nats.KeyValue, error) {
-	_connMut.Lock()
-	defer _connMut.Unlock()
-	if conn, ok := _conns[url]; ok {
+	_kvMut.Lock()
+	defer _kvMut.Unlock()
+	if conn, ok := _kvs[url]; ok {
 		return conn, nil
 	}
 	conn, err := nats.Connect(url)
