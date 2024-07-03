@@ -2,6 +2,7 @@ package cache
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/gob"
 	"encoding/hex"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vedadiyan/iceberg/internal/netio"
 	"github.com/vedadiyan/iceberg/internal/router"
 )
 
@@ -54,6 +56,30 @@ func (c *Cache) ParseKey(r *http.Request) (string, error) {
 		cacheKey = strings.ReplaceAll(cacheKey, "${body}", hex.EncodeToString(hash))
 	}
 	return cacheKey, nil
+}
+
+func (c *Cache) GetRequestUpdaters() []netio.RequestUpdater {
+	return []netio.RequestUpdater{}
+}
+
+func (c *Cache) GetResponseUpdaters() []netio.ResponseUpdater {
+	return []netio.ResponseUpdater{}
+}
+
+func (c *Cache) GetName() string {
+	return "Cache"
+}
+
+func (c *Cache) GetAwaitList() []string {
+	return []string{}
+}
+
+func (c *Cache) GetIsParallel() bool {
+	return false
+}
+
+func (f *Cache) GetContext() context.Context {
+	return context.TODO()
 }
 
 func Marshal(r *http.Request) ([]byte, error) {

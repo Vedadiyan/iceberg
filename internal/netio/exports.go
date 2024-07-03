@@ -42,8 +42,10 @@ const (
 
 	LEVEL_NONE     Level = 0
 	LEVEL_CONNECT  Level = 1
-	LEVEL_REQUEST  Level = 2
-	LEVEL_RESPONSE Level = 4
+	LEVEL_PRE      Level = 2
+	LEVEL_REQUEST  Level = 4
+	LEVEL_RESPONSE Level = 8
+	LEVEL_POST     Level = 16
 )
 
 func NewError(message string, status int) Error {
@@ -56,9 +58,19 @@ func NewError(message string, status int) Error {
 func Sort(callers ...Caller) []Caller {
 	main := make([]Caller, 0)
 	connect := make([]Caller, 0)
+	pre := make([]Caller, 0)
 	request := make([]Caller, 0)
 	respone := make([]Caller, 0)
+	post := make([]Caller, 0)
 	for _, caller := range callers {
+		if caller.GetLevel() == LEVEL_PRE {
+			pre = append(main, caller)
+			continue
+		}
+		if caller.GetLevel() == LEVEL_POST {
+			post = append(main, caller)
+			continue
+		}
 		if caller.GetLevel()&LEVEL_NONE == LEVEL_NONE {
 			main = append(main, caller)
 		}
@@ -74,9 +86,11 @@ func Sort(callers ...Caller) []Caller {
 	}
 	final := make([]Caller, 0)
 	final = append(final, connect...)
+	final = append(final, pre...)
 	final = append(final, request...)
 	final = append(final, main...)
 	final = append(final, respone...)
+	final = append(final, post...)
 	return final
 }
 

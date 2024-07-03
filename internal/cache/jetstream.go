@@ -59,6 +59,10 @@ func GetKV(url string, bucket string, ttl time.Duration) (nats.KeyValue, error) 
 	return kv, nil
 }
 
+func (f *JetStreamGet) GetLevel() netio.Level {
+	return netio.LEVEL_PRE
+}
+
 func (f *JetStreamGet) Call(ctx context.Context, _ netio.Cloner, o netio.Cloner) (netio.Next, *http.Response, netio.Error) {
 	req, err := o()
 	if err != nil {
@@ -80,6 +84,10 @@ func (f *JetStreamGet) Call(ctx context.Context, _ netio.Cloner, o netio.Cloner)
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
 	return netio.TERM, res, nil
+}
+
+func (f *JetStreamSet) GetLevel() netio.Level {
+	return netio.LEVEL_POST
 }
 
 func (f *JetStreamSet) Call(ctx context.Context, c netio.Cloner, o netio.Cloner) (netio.Next, *http.Response, netio.Error) {
