@@ -14,18 +14,18 @@ type (
 	Cloner   func(options ...RequestOption) (*http.Request, error)
 	Response struct {
 		*http.Response
-		*Error
+		Error
 	}
-	Error struct {
-		Message string
-		Status  int
+	Error interface {
+		Message() string
+		Status() int
 	}
 	Caller interface {
 		GetLevel() Level
 		GetIsParallel() bool
 		GetName() string
 		GetAwaitList() []string
-		Call(context.Context, Cloner) (Next, *http.Response, *Error)
+		Call(context.Context, Cloner) (Next, *http.Response, Error)
 		GetRequestUpdaters() []RequestUpdater
 		GetResponseUpdaters() []ResponseUpdater
 		GetContext() context.Context
@@ -42,7 +42,7 @@ const (
 	LEVEL_RESPONSE Level = 4
 )
 
-func NewError(message string, status int) *Error {
+func NewError(message string, status int) Error {
 	panic("")
 }
 
@@ -73,7 +73,7 @@ func Sort(callers ...Caller) []Caller {
 	return final
 }
 
-func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, *Error) {
+func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 	var (
 		out *ShadowResponse
 		mut sync.RWMutex
@@ -120,10 +120,10 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, *Error) {
 	return out, nil
 }
 
-func await(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest, out *ShadowResponse) *Error {
+func await(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest, out *ShadowResponse) Error {
 	if len(cal.GetAwaitList()) != 0 {
 		for _, task := range cal.GetAwaitList() {
-			var err *Error
+			var err Error
 			mut.RLocker()
 			ch, chFound := tsks[task]
 			ctx, ctxFound := ctxs[task]
@@ -187,7 +187,7 @@ func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks m
 	}()
 }
 
-func createOrUpdateResponse(in *ShadowResponse, res *http.Response, ru []ResponseUpdater) (*ShadowResponse, *Error) {
+func createOrUpdateResponse(in *ShadowResponse, res *http.Response, ru []ResponseUpdater) (*ShadowResponse, Error) {
 	if in == nil {
 		res, err := NewShandowResponse(res)
 		if err != nil {

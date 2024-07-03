@@ -99,11 +99,11 @@ func (f *Filter) SetExchangeBody(headers []string) {
 	}
 }
 
-func (f *Filter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, error) {
+func (f *Filter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *http.Response, netio.Error) {
 	return f.instance.Call(ctx, c)
 }
 
-func Await(resCh <-chan *netio.ShadowResponse, errCh <-chan error, ctx context.Context) (netio.Next, *http.Response, *netio.Error) {
+func Await(resCh <-chan *netio.ShadowResponse, errCh <-chan error, ctx context.Context) (netio.Next, *http.Response, netio.Error) {
 	select {
 	case res := <-resCh:
 		{
