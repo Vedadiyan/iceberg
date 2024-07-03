@@ -29,5 +29,8 @@ func (f *HttpFilter) Call(ctx context.Context, c netio.Cloner) (netio.Next, *htt
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusBadGateway)
 	}
+	if res.StatusCode > 399 {
+		return netio.TERM, nil, netio.NewError(res.Status, res.StatusCode)
+	}
 	return netio.CONTINUE, res, nil
 }

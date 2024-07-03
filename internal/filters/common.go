@@ -107,6 +107,9 @@ func Await(resCh <-chan *netio.ShadowResponse, errCh <-chan error, ctx context.C
 	select {
 	case res := <-resCh:
 		{
+			if res.Response.StatusCode > 399 {
+				return netio.TERM, nil, netio.NewError(res.Response.Status, res.Response.StatusCode)
+			}
 			return netio.CONTINUE, res.Response, nil
 		}
 	case err := <-errCh:
