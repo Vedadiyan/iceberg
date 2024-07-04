@@ -54,6 +54,9 @@ func (c *Cache) ParseKey(r *http.Request, rv netio.RouteValues) (string, error) 
 		hash := sha256.Sum(nil)
 		cacheKey = strings.ReplaceAll(cacheKey, "${body}", hex.EncodeToString(hash))
 	}
+	if strings.Contains(cacheKey, "${method}") {
+		cacheKey = strings.ReplaceAll(cacheKey, "${body}", r.Method)
+	}
 	return cacheKey, nil
 }
 
