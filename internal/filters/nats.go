@@ -153,7 +153,16 @@ func (f *NatsJSFilter) Call(ctx context.Context, _ netio.RouteValues, c netio.Cl
 
 func (f *NatsJSFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowResponse, errCh chan<- error) error {
 	handle := func(msg *nats.Msg) {
-		res, err := MsgToResponse(msg)
+		clone := *msg
+		headers, err := headers.Import(clone.Header)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		if len(headers) > 0 {
+			clone.Header = nats.Header(headers)
+		}
+		res, err := MsgToResponse(&clone)
 		if err != nil {
 			errCh <- err
 			return
@@ -298,7 +307,8 @@ func CreateReflectorChannel(f *NatsBase) func(c *nats.Conn) error {
 			if len(reply) == 0 {
 				return err
 			}
-			m.Subject = reply
+			clone.Subject = reply
+			clone.Reply = ""
 			headers.DeleteReply()
 			err = headers.Export(clone.Header)
 			if err != nil {

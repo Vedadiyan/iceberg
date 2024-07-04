@@ -45,7 +45,7 @@ func main() {
 
 	target, _ := url.Parse("http://127.0.0.1:8081")
 	proxy := proxies.NewHttpProxy(target, nil)
-	callback, _ := url.Parse("nats://127.0.0.1:4222/test")
+	callback, _ := url.Parse("nats://127.0.0.1:4222/abc")
 	f := filters.NewFilter()
 	f.Address = callback
 	f.Level = netio.LEVEL_REQUEST
@@ -53,7 +53,7 @@ func main() {
 	f.Callers = append(f.Callers, fffilter)
 	f.SetExchangeHeaders([]string{"X-Test-Header", "New-Header"})
 	// f.SetExchangeBody()
-	filter, err := filters.NewCoreNATSFilter(filters.NewBaseNATS(f))
+	filter, err := filters.NewDurableNATSFilter(filters.NewBaseNATS(f))
 	if err != nil {
 		panic(err)
 	}
