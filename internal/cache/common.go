@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 
 type (
 	Cache struct {
+		Address     *url.URL
 		Route       *router.Route
 		KeyTemplate string
 		TTL         time.Duration

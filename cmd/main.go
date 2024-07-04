@@ -3,20 +3,33 @@ package main
 import (
 	"net/http"
 	"net/url"
+	"time"
 
+	"github.com/vedadiyan/iceberg/internal/cache"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/netio"
 	"github.com/vedadiyan/iceberg/internal/proxies"
+	"github.com/vedadiyan/iceberg/internal/router"
 	"github.com/vedadiyan/iceberg/internal/server"
 )
 
 func main() {
-	target, _ := url.Parse("https://www.google.com")
+	jetstream, _ := url.Parse("nats://127.0.0.1:4222/test")
+	x, _ := url.Parse("/")
+	route := router.ParseRoute(x, "*")
+	cache, _ := cache.NewJetStream(&cache.Cache{
+		Address:     jetstream,
+		TTL:         time.Second * 30,
+		Route:       route,
+		KeyTemplate: "test",
+	})
+
+	target, _ := url.Parse("http://127.0.0.1:8081")
 	proxy := proxies.NewHttpProxy(target, nil)
 	callback, _ := url.Parse("nats://127.0.0.1:4222/test")
 	f := filters.NewFilter()
 	f.Address = callback
-	f.Level = netio.LEVEL_RESPONSE
+	f.Level = netio.LEVEL_REQUEST
 	f.SetExchangeHeaders([]string{"X-Test-Header", "New-Header"})
 	// f.SetExchangeBody()
 	filter, err := filters.NewCoreNATSFilter(filters.NewBaseNATS(f))
@@ -30,7 +43,7 @@ func main() {
 			return
 		}
 		shadowRequest.RouteValues = netio.RouteValues(rv)
-		res, _err := netio.Cascade(shadowRequest, netio.Sort(proxy, filter)...)
+		res, _err := netio.Cascade(shadowRequest, netio.Sort(proxy, filter, cache.Get(), cache.Set())...)
 		if _err != nil {
 			http.Error(w, _err.Message(), _err.Status())
 			return

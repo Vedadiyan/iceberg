@@ -3,6 +3,8 @@ package cache
 import (
 	"context"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -17,6 +19,8 @@ type (
 		Host   string
 		Bucket string
 		kv     nats.KeyValue
+		get    *JetStreamGet
+		set    *JetStreamSet
 	}
 	JetStreamGet struct {
 		*JetStream
@@ -57,6 +61,47 @@ func GetKV(url string, bucket string, ttl time.Duration) (nats.KeyValue, error) 
 		return nil, err
 	}
 	return kv, nil
+}
+
+func NewJetStream(c *Cache) (*JetStream, error) {
+	host := c.Address.Host
+	if strings.HasPrefix(host, "[[") && strings.HasSuffix(host, "]]") {
+		host = strings.TrimLeft(host, "[")
+		host = strings.TrimRight(host, "]")
+		host = os.Getenv(host)
+	}
+	jetstream := new(JetStream)
+	jetstream.Cache = c
+	jetstream.Host = host
+	jetstream.Bucket = strings.TrimPrefix(c.Address.Path, "/")
+	jetstream.get = NewJetStreamGet(jetstream)
+	jetstream.set = NewJetStreamSet(jetstream)
+	kv, err := GetKV(jetstream.Host, jetstream.Bucket, jetstream.TTL)
+	if err != nil {
+		return nil, err
+	}
+	jetstream.kv = kv
+	return jetstream, nil
+}
+
+func NewJetStreamGet(js *JetStream) *JetStreamGet {
+	jetstreamGet := new(JetStreamGet)
+	jetstreamGet.JetStream = js
+	return jetstreamGet
+}
+
+func NewJetStreamSet(js *JetStream) *JetStreamSet {
+	jetstreamSet := new(JetStreamSet)
+	jetstreamSet.JetStream = js
+	return jetstreamSet
+}
+
+func (jetStream *JetStream) Get() netio.Caller {
+	return jetStream.get
+}
+
+func (jetStream *JetStream) Set() netio.Caller {
+	return jetStream.set
 }
 
 func (f *JetStreamGet) GetLevel() netio.Level {
