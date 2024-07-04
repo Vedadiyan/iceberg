@@ -14,13 +14,11 @@ import (
 	"time"
 
 	"github.com/vedadiyan/iceberg/internal/netio"
-	"github.com/vedadiyan/iceberg/internal/router"
 )
 
 type (
 	Cache struct {
 		Address     *url.URL
-		Route       *router.Route
 		KeyTemplate string
 		TTL         time.Duration
 	}

@@ -9,18 +9,14 @@ import (
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/netio"
 	"github.com/vedadiyan/iceberg/internal/proxies"
-	"github.com/vedadiyan/iceberg/internal/router"
 	"github.com/vedadiyan/iceberg/internal/server"
 )
 
 func main() {
 	jetstream, _ := url.Parse("nats://127.0.0.1:4222/test")
-	x, _ := url.Parse("/")
-	route := router.ParseRoute(x, "*")
 	cache, _ := cache.NewJetStream(&cache.Cache{
 		Address:     jetstream,
 		TTL:         time.Second * 30,
-		Route:       route,
 		KeyTemplate: "test",
 	})
 
