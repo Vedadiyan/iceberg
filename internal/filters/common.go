@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/vedadiyan/iceberg/internal/netio"
@@ -112,15 +111,9 @@ func Await(resCh <-chan *netio.ShadowResponse, errCh <-chan error, ctx context.C
 	select {
 	case res := <-resCh:
 		{
-			status, err := strconv.Atoi(res.Header.Get("Status"))
-			if err != nil {
-				return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
-			}
-			if status < 100 {
-				status = 418
-			}
-			if status > 399 {
-				return netio.TERM, nil, netio.NewError("", status)
+
+			if res.StatusCode > 399 {
+				return netio.TERM, nil, netio.NewError(res.Status, res.StatusCode)
 			}
 			return netio.CONTINUE, res.Response, nil
 		}

@@ -16,7 +16,7 @@ func main() {
 	callback, _ := url.Parse("nats://127.0.0.1:4222/test")
 	f := filters.NewFilter()
 	f.Address = callback
-	f.Level = netio.LEVEL_REQUEST
+	f.Level = netio.LEVEL_RESPONSE
 	f.SetExchangeHeaders([]string{"X-Test-Header", "New-Header"})
 	// f.SetExchangeBody()
 	filter, err := filters.NewCoreNATSFilter(filters.NewBaseNATS(f))

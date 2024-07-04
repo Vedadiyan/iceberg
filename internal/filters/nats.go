@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -90,6 +91,14 @@ func MsgToResponse(m *nats.Msg) (*netio.ShadowResponse, error) {
 			res.Header.Add(key, value)
 		}
 	}
+	status, err := strconv.Atoi(res.Header.Get("Status"))
+	if err != nil {
+		return nil, err
+	}
+	if status < 100 {
+		status = 418
+	}
+	res.StatusCode = status
 	res.Body = io.NopCloser(bytes.NewReader(m.Data))
 	return netio.NewShandowResponse(&res)
 }

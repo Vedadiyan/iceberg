@@ -78,6 +78,9 @@ func (f *HttpProxy) Call(ctx context.Context, _ netio.RouteValues, c netio.Clone
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusBadGateway)
 	}
+	if res.StatusCode > 399 {
+		return netio.TERM, nil, netio.NewError(res.Status, res.StatusCode)
+	}
 	res.Header.Add("X-Request-Id", r.Header.Get("X-Request-Id"))
 	return netio.CONTINUE, res, nil
 }
