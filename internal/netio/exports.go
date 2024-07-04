@@ -157,7 +157,7 @@ func await(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks 
 	}
 	for _, task := range cal.GetAwaitList() {
 		var err Error
-		mut.RLocker()
+		mut.RLock()
 		ch, chFound := tsks[task]
 		ctx, ctxFound := ctxs[task]
 		mut.RUnlock()
@@ -199,13 +199,13 @@ func await(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks 
 }
 
 func spin(cal Caller, mut *sync.RWMutex, ctxs map[string]context.Context, tsks map[string]<-chan *Response, in *ShadowRequest, or *ShadowRequest) {
+	ch := make(chan *Response, 1)
+	mut.Lock()
+	tsks[cal.GetName()] = ch
+	ctxs[cal.GetName()] = cal.GetContext()
+	mut.Unlock()
 	go func() {
-		ch := make(chan *Response, 1)
 		defer close(ch)
-		mut.Lock()
-		tsks[cal.GetName()] = ch
-		ctxs[cal.GetName()] = cal.GetContext()
-		mut.Unlock()
 		_, r, err := cal.Call(cal.GetContext(), or.RouteValues, in.CloneRequest, or.CloneRequest)
 		if err != nil {
 			ch <- &Response{
