@@ -133,15 +133,15 @@ func (f *WebSocketReaderProxy) Call(ctx context.Context, _ netio.RouteValues, c 
 }
 
 func (f *WebSocketWriterProxy) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
-	res, err := c()
+	r, err := c()
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
-	data, err := io.ReadAll(res.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
-	t, err := strconv.Atoi(res.Header.Get("Message-Type"))
+	t, err := strconv.Atoi(r.Header.Get("Message-Type"))
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
