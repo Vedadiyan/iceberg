@@ -21,7 +21,7 @@ iceberg is a Kubernetes sidecar proxy that can intercept and filter traffic betw
 
 Support filters using different protocols:
 - HTTP/HTTPS
-- gRPC (In Development)
+- gRPC (SUPPORT DROPPED)
 - NATS
 - Websocket (In Development)
 
