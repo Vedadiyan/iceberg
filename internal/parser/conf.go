@@ -33,19 +33,11 @@ type (
 		Async    bool       `yaml:"async"`
 		Await    []string   `yaml:"await"`
 		Exchange ExchangeV1 `yaml:"exchange"`
-		Next     []NextV1   `yaml:"next"`
+		Next     []FilterV1 `yaml:"next"`
 	}
 	ExchangeV1 struct {
 		Headers []string `yaml:"headers"`
 		Body    bool     `yaml:"body"`
-	}
-	NextV1 struct {
-		Name    string   `yaml:"name"`
-		Addr    string   `yaml:"addr"`
-		OnError OnError  `yaml:"onError"`
-		Timeout string   `yaml:"timeout"`
-		Async   bool     `yaml:"async"`
-		Await   []string `yaml:"await"`
 	}
 	UseV1 struct {
 		Cache CacheV1 `yaml:"cache"`

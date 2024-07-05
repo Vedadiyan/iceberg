@@ -1,9 +1,19 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
+	"time"
+	"unicode"
 
+	"github.com/vedadiyan/iceberg/internal/filters"
+	"github.com/vedadiyan/iceberg/internal/netio"
+	"github.com/vedadiyan/iceberg/internal/proxies"
+	"github.com/vedadiyan/iceberg/internal/server"
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,4 +35,118 @@ func Parse(in []byte) (Version, *Metadata, any, error) {
 		}
 	}
 	return 0, nil, nil, fmt.Errorf("usupported version %s", conf.APIVersion)
+}
+
+func ParseV1(specs *SpecV1) error {
+	for _, value := range specs.Resources {
+		url, err := url.Parse(value.Frontend)
+		if err != nil {
+			return nil
+		}
+		callers, err := ParseFiltersV1(value.Filters, true)
+		if err != nil {
+			return nil
+		}
+		proxy := proxies.NewHttpProxy(url, netio.Sort(callers...))
+		server.HandleFunc(value.Backend, value.Method, func(w http.ResponseWriter, r *http.Request, rv server.RouteValues) {
+			proxy.Handle(w, r)
+		})
+	}
+	return nil
+}
+
+func ParseFiltersV1(in []FilterV1, supportsLevel bool) ([]netio.Caller, error) {
+	callers := make([]netio.Caller, 0)
+	for _, caller := range in {
+		url, err := url.Parse(caller.Addr)
+		if err != nil {
+			return nil, err
+		}
+		filter := filters.NewFilter()
+		filter.Address = url
+		filter.AwaitList = caller.Await
+		filter.Name = caller.Name
+		filter.Parallel = caller.Async
+		filter.Level = netio.LEVEL_NONE
+		if supportsLevel {
+			level, err := Level(caller.Level)
+			if err != nil {
+				return nil, err
+			}
+			filter.Level = level
+		}
+		timeout, err := Timeout(caller.Timeout)
+		if err != nil {
+			return nil, err
+		}
+		filter.Timeout = timeout
+		next, err := ParseFiltersV1(caller.Next, false)
+		if err != nil {
+			return nil, err
+		}
+		filter.Callers = next
+		c, err := filter.Build()
+		if err != nil {
+			return nil, err
+		}
+		callers = append(callers, c)
+	}
+	return callers, nil
+}
+
+func Level(level string) (netio.Level, error) {
+	switch strings.ToLower(level) {
+	case "connect":
+		{
+			return netio.LEVEL_CONNECT, nil
+		}
+	case "request":
+		{
+			return netio.LEVEL_REQUEST, nil
+		}
+	case "response":
+		{
+			return netio.LEVEL_RESPONSE, nil
+		}
+	}
+	return netio.LEVEL_NONE, fmt.Errorf("unsupported level %s", level)
+}
+
+func Timeout(str string) (time.Duration, error) {
+	if len(str) == 0 {
+		return 0, nil
+	}
+	var buffer bytes.Buffer
+	for _, r := range str {
+		if !unicode.IsDigit(r) {
+			break
+		}
+		buffer.WriteRune(r)
+	}
+	unit := str[:buffer.Len()]
+	unit = strings.TrimPrefix(unit, " ")
+	unit = strings.TrimSuffix(unit, " ")
+	n, err := strconv.Atoi(buffer.String())
+	if err != nil {
+		return 0, err
+	}
+	switch strings.ToLower(unit) {
+	case "ms":
+		{
+			return time.Millisecond * time.Duration(n), nil
+		}
+	case "s":
+		{
+			return time.Second * time.Duration(n), nil
+		}
+	case "m":
+		{
+			return time.Minute * time.Duration(n), nil
+		}
+	case "h":
+		{
+			return time.Hour * time.Duration(n), nil
+		}
+	}
+	return 0, fmt.Errorf("unsupported unit %s", unit)
 }
