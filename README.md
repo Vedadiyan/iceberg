@@ -37,32 +37,48 @@ iceberg is configured via a YAML file specified in the `ICEBERG_CONFIG` environm
 
 ### Example configuration:
 
-    apiVersion: iceberg/v1
+    apiVersion: apps/v1
+    metadata:
+      name: test
     spec:
-      listen: ":8081"
-        resources:
-          - name: Some Name
-            frontend: /test
-            backend: 127.0.0.1:8080/test
-            filterChains: 
-              - name: authorize
-                listener: "nats://[[default-nats]]/test.message.ok.>"
-                level: "request|parallel"
-                exchange: 
-                  headers: 
-                    - X-User-Token
-                  body: false
-
-Key configuration options:
-- listen - Address and port iceberg listens on
-- resources - Named resources that can be referenced
-    - frontend - Route to listen on
-    - backend - Route to proxy to main container
-    - filterChains - One or more filter chains to define
-        - name - Name of filter chain
-        - listener - Frontend listener protocol/address
-        - level - Filter level (request, response, parallel)
-        - exchange - Headers and body to exchange with backend
+      listen: ''
+      resources:
+        main-api:
+          frontend: ''
+          backend: ''
+          method: ''
+          use:
+            cache:
+              addr: 'jetstream://[[default_nats]]/bucket_name'
+              ttl: 30s
+              key: 'test_${:route_value}_${?query_param}_${body}_${method}'
+            cors: default
+          filters:
+            - name: request-log
+              addr: 'jetstream://[default_nats]/abc'
+              level: request
+              timeout: 30s
+              onError: default
+              async: false
+              await: []
+              exchange:
+                headers:
+                  - X-Test-Header
+                body: true
+              next:
+                - name: test
+                  addr: 'nats://[default_nats]/test'
+                  onError: default
+                  timeout: 30s
+                  async: true
+                  await: []
+                - name: test2
+                  addr: 'nats://[default_nats]/test2'
+                  timeout: 30s
+                  onError: default
+                  async: false
+                  await:
+                    - test
 
 To specify a host via environment variable, use [[envvar]] syntax.
 
