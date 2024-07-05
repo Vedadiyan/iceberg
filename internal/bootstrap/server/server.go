@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/vedadiyan/iceberg/internal/router"
+	"github.com/vedadiyan/iceberg/internal/common/router"
 )
 
 type (
