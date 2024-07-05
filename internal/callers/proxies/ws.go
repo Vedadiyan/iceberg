@@ -174,20 +174,26 @@ func (f *WebSocketWriterProxy) Call(ctx context.Context, _ netio.RouteValues, c 
 }
 
 func (f *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv netio.RouteValues) {
-	in, err := netio.NewShadowRequest(r)
+	req, err := netio.NewShadowRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	_, _err := netio.Cascade(in, f.ConnectCallers...)
+	_, _err := netio.Cascade(req, f.ConnectCallers...)
 	if _err != nil {
 		http.Error(w, _err.Message(), _err.Status())
 	}
-	_, err = upgrader.Upgrade(w, r, http.Header{})
+	in, err := upgrader.Upgrade(w, r, http.Header{})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	f.in = in
+	out, _, err := websocket.DefaultDialer.Dial(f.Address.String(), r.Header)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	f.out = out
 	reader := NewWebSocketReaderProxy(f)
 	writer := NewWebSocketWriterProxy(f)
-	go reader.Call(context.TODO(), nil, in.CloneRequest, nil)
-	go writer.Call(context.TODO(), nil, in.CloneRequest, nil)
+	go reader.Call(context.TODO(), nil, req.CloneRequest, nil)
+	go writer.Call(context.TODO(), nil, req.CloneRequest, nil)
 }
