@@ -57,7 +57,6 @@ func NewWebSocketReaderProxy(webSocketProxy *WebSocketProxy) *WebSocketReaderPro
 	webSocketReaderProxy := new(WebSocketReaderProxy)
 	webSocketReaderProxy.WebSocketProxy = webSocketProxy
 	webSocketReaderProxy.Callers = make([]netio.Caller, 0)
-	webSocketReaderProxy.Callers = append(webSocketReaderProxy.Callers, webSocketReaderProxy)
 	for _, caller := range webSocketProxy.Callers {
 		if caller.GetLevel() == netio.LEVEL_REQUEST {
 			webSocketReaderProxy.Callers = append(webSocketReaderProxy.Callers, caller)
@@ -70,7 +69,6 @@ func NewWebSocketWriterProxy(webSocketProxy *WebSocketProxy) *WebSocketWriterPro
 	webSocketWriterProxy := new(WebSocketWriterProxy)
 	webSocketWriterProxy.WebSocketProxy = webSocketProxy
 	webSocketWriterProxy.Callers = make([]netio.Caller, 0)
-	webSocketWriterProxy.Callers = append(webSocketWriterProxy.Callers, webSocketWriterProxy)
 	for _, caller := range webSocketProxy.Callers {
 		if caller.GetLevel() == netio.LEVEL_RESPONSE {
 			webSocketWriterProxy.Callers = append(webSocketWriterProxy.Callers, caller)
@@ -186,14 +184,20 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 	outReader := NewWebSocketReaderProxy(outProxy)
 	outWriter := NewWebSocketWriterProxy(outProxy)
 
+	inReader.Callers = append([]netio.Caller{inReader}, inReader.Callers...)
+	inReader.Callers = append(inReader.Callers, outWriter)
+
+	outReader.Callers = append([]netio.Caller{outReader}, inWriter.Callers...)
+	outReader.Callers = append(outReader.Callers, inWriter)
+
 	go func() {
 		for inProxy.listening {
-			_, _ = netio.Cascade(req, append(inReader.Callers, outWriter)...)
+			_, _ = netio.Cascade(req, inReader.Callers...)
 		}
 	}()
 	go func() {
 		for outProxy.listening {
-			_, _ = netio.Cascade(req, append(outReader.Callers, inWriter)...)
+			_, _ = netio.Cascade(req, outReader.Callers...)
 		}
 	}()
 }
