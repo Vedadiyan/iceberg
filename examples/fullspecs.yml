@@ -19,6 +19,7 @@ spec:
           addr: 'jetstream://[default_nats]/abc'
           level: request
           timeout: 30s
+          onError: default
           async: false
           await: []
           exchange:
@@ -28,12 +29,14 @@ spec:
           next:
             - name: test
               addr: 'nats://[default_nats]/test'
+              onError: default
               timeout: 30s
               async: true
               await: []
             - name: test2
               addr: 'nats://[default_nats]/test2'
               timeout: 30s
+              onError: default
               async: false
               await:
                 - test
