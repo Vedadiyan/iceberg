@@ -1,11 +1,14 @@
-package conf
+package parser
+
+import "gopkg.in/yaml.v3"
 
 type (
 	OnError string
+	Version int
 	Config  struct {
-		APIVersion string   `yaml:"apiVersion"`
-		Metadata   Metadata `yaml:"metadata"`
-		Spec       any      `yaml:"spec"`
+		APIVersion string    `yaml:"apiVersion"`
+		Metadata   Metadata  `yaml:"metadata"`
+		Spec       yaml.Node `yaml:"spec"`
 	}
 	Metadata struct {
 		Name string `yaml:"name"`

@@ -3,16 +3,25 @@ package main
 import (
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/vedadiyan/iceberg/internal/cache"
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/netio"
+	"github.com/vedadiyan/iceberg/internal/parser"
 	"github.com/vedadiyan/iceberg/internal/proxies"
 	"github.com/vedadiyan/iceberg/internal/server"
 )
 
 func main() {
+
+	data, err := os.ReadFile("../examples/fullspecs.yml")
+	if err != nil {
+		panic(err)
+	}
+	parser.Parse(data)
+
 	jetstream, _ := url.Parse("nats://127.0.0.1:4222/test")
 	cache, _ := cache.NewJetStream(&cache.Cache{
 		Address:     jetstream,
@@ -57,7 +66,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	server.HandleFunc("/", func(w http.ResponseWriter, r *http.Request, rv server.RouteValues) {
+	server.HandleFunc("/", "*", func(w http.ResponseWriter, r *http.Request, rv server.RouteValues) {
 		shadowRequest, err := netio.NewShadowRequest(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

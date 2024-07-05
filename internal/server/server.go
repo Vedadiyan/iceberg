@@ -8,7 +8,8 @@ import (
 )
 
 type (
-	RouteValues = router.RouteValues
+	RouteValues         = router.RouteValues
+	RegistrationOptions func(*router.RouteTable, *url.URL, func(w http.ResponseWriter, r *http.Request, rv RouteValues))
 )
 
 var (
@@ -18,7 +19,7 @@ var (
 func init() {
 	_mux = http.NewServeMux()
 	_mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		router, err := router.DefaultRouteTable().Find(r.URL, "*")
+		router, err := router.DefaultRouteTable().Find(r.URL, r.Method)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -27,12 +28,32 @@ func init() {
 	})
 }
 
-func HandleFunc(pattern string, handler func(w http.ResponseWriter, r *http.Request, rv RouteValues)) error {
+func WithCors() RegistrationOptions {
+	return func(rt *router.RouteTable, u *url.URL, f func(w http.ResponseWriter, r *http.Request, rv RouteValues)) {
+		rt.Register(u, "OPTION", f)
+	}
+}
+
+func HandleFunc(pattern string, method string, handler func(w http.ResponseWriter, r *http.Request, rv RouteValues), options ...RegistrationOptions) error {
 	url, err := url.Parse(pattern)
 	if err != nil {
 		return err
 	}
-	router.DefaultRouteTable().Register(url.JoinPath(), "*", handler)
+	for _, option := range options {
+		option(router.DefaultRouteTable(), url, handler)
+	}
+	if len(method) == 0 {
+		method = "*"
+	}
+	if method == "*" {
+		router.DefaultRouteTable().Register(url, "GET", handler)
+		router.DefaultRouteTable().Register(url, "HEAD", handler)
+		router.DefaultRouteTable().Register(url, "POST", handler)
+		router.DefaultRouteTable().Register(url, "PUT", handler)
+		router.DefaultRouteTable().Register(url, "DELETE", handler)
+		return nil
+	}
+	router.DefaultRouteTable().Register(url, method, handler)
 	return nil
 }
 

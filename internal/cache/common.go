@@ -33,6 +33,34 @@ func init() {
 	gob.Register(Response{})
 }
 
+func Marshal(r *http.Request) ([]byte, error) {
+	body, err := io.ReadAll(r.Body)
+	buffer := new(bytes.Buffer)
+	if err != nil {
+		return nil, err
+	}
+	err = gob.NewEncoder(buffer).Encode(Response{
+		Header: r.Header,
+		Body:   body,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
+}
+
+func Unmarshal(data []byte) (*http.Response, error) {
+	val := new(Response)
+	err := gob.NewDecoder(bytes.NewBuffer(data)).Decode(val)
+	if err != nil {
+		return nil, err
+	}
+	res := http.Response{}
+	res.Header = val.Header.Clone()
+	res.Body = io.NopCloser(bytes.NewReader(val.Body))
+	return &res, nil
+}
+
 func (c *Cache) ParseKey(r *http.Request, rv netio.RouteValues) (string, error) {
 	cacheKey := strings.ToLower(c.KeyTemplate)
 	for key, value := range rv {
@@ -84,30 +112,16 @@ func (f *Cache) GetContext() context.Context {
 	return context.TODO()
 }
 
-func Marshal(r *http.Request) ([]byte, error) {
-	body, err := io.ReadAll(r.Body)
-	buffer := new(bytes.Buffer)
-	if err != nil {
-		return nil, err
+func (f *Cache) Build() ([]netio.Caller, error) {
+	switch strings.ToLower(f.Address.Scheme) {
+	case "jetstream":
+		{
+			jetstream, err := NewJetStream(f)
+			if err != nil {
+				return nil, err
+			}
+			return []netio.Caller{jetstream.Get(), jetstream.Set()}, nil
+		}
 	}
-	err = gob.NewEncoder(buffer).Encode(Response{
-		Header: r.Header,
-		Body:   body,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return buffer.Bytes(), nil
-}
-
-func Unmarshal(data []byte) (*http.Response, error) {
-	val := new(Response)
-	err := gob.NewDecoder(bytes.NewBuffer(data)).Decode(val)
-	if err != nil {
-		return nil, err
-	}
-	res := http.Response{}
-	res.Header = val.Header.Clone()
-	res.Body = io.NopCloser(bytes.NewReader(val.Body))
-	return &res, nil
+	return nil, fmt.Errorf("unsupported scheme %s", f.Address.Scheme)
 }

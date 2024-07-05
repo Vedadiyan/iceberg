@@ -2,8 +2,10 @@ package filters
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/vedadiyan/iceberg/internal/netio"
@@ -126,4 +128,22 @@ func Await(resCh <-chan *netio.ShadowResponse, errCh <-chan error, ctx context.C
 			return netio.TERM, nil, netio.NewError(context.DeadlineExceeded.Error(), http.StatusGatewayTimeout)
 		}
 	}
+}
+
+func (f *Filter) Build() (netio.Caller, error) {
+	switch strings.ToLower(f.Address.Scheme) {
+	case "http", "https":
+		{
+			return NewHttpFilter(f), nil
+		}
+	case "jetstream":
+		{
+			return NewDurableNATSFilter(NewBaseNATS(f))
+		}
+	case "nats":
+		{
+			return NewCoreNATSFilter(NewBaseNATS(f))
+		}
+	}
+	return nil, fmt.Errorf("unsupported scheme %s", f.Address.Scheme)
 }
