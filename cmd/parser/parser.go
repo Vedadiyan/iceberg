@@ -28,14 +28,14 @@ func Parse(in []byte) (Version, *Metadata, any, error) {
 			if err != nil {
 				return 0, nil, nil, err
 			}
-			return 1, &conf.Metadata, specs, nil
+			return 1, &conf.Metadata, &specs, nil
 		}
 	}
 	return 0, nil, nil, fmt.Errorf("usupported version %s", conf.APIVersion)
 }
 
-func ParseV1(specs *SpecV1, handleFunc func(*url.URL, []netio.Caller)) error {
-	for _, value := range specs.Resources {
+func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string, string, []netio.Caller)) error {
+	for _, value := range resourcesV1 {
 		url, err := url.Parse(value.Frontend)
 		if err != nil {
 			return nil
@@ -44,7 +44,7 @@ func ParseV1(specs *SpecV1, handleFunc func(*url.URL, []netio.Caller)) error {
 		if err != nil {
 			return nil
 		}
-		handleFunc(url, callers)
+		handleFunc(url, value.Backend, value.Method, callers)
 	}
 	return nil
 }
