@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/vedadiyan/iceberg/internal/filters"
+	"github.com/vedadiyan/iceberg/internal/callers/filters"
 	"github.com/vedadiyan/iceberg/internal/netio"
 	"gopkg.in/yaml.v3"
 )

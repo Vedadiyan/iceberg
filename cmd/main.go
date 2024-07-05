@@ -8,8 +8,8 @@ import (
 
 	"github.com/vedadiyan/iceberg/cmd/parser"
 	"github.com/vedadiyan/iceberg/cmd/server"
+	"github.com/vedadiyan/iceberg/internal/callers/proxies"
 	"github.com/vedadiyan/iceberg/internal/netio"
-	"github.com/vedadiyan/iceberg/internal/proxies"
 )
 
 func main() {
