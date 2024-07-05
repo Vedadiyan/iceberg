@@ -2,34 +2,38 @@ apiVersion: apps/v1
 metadata:
   name: test
 spec:
-  listen: ""
-  resources: 
-    main-api: 
-      frontend: ""
-      backend: ""
-      use: 
-        cache: 
-          addr: "jetstream://[[default_nats]]/bucket_name"
+  listen: ''
+  resources:
+    main-api:
+      frontend: ''
+      backend: ''
+      method: ''
+      use:
+        cache:
+          addr: 'jetstream://[[default_nats]]/bucket_name'
           ttl: 30s
-          key: "test_${:route_value}_${?query_param}_${body}_${method}"
+          key: 'test_${:route_value}_${?query_param}_${body}_${method}'
         cors: default
-      filters: 
+      filters:
         - name: request-log
-          addr: "jetstream://[default_nats]/abc"
+          addr: 'jetstream://[default_nats]/abc'
           level: request
           timeout: 30s
-          exchange: 
-            headers: 
+          async: false
+          await: []
+          exchange:
+            headers:
               - X-Test-Header
             body: true
-          next: 
-            - name: test 
-              addr: "nats://[default_nats]/test"
+          next:
+            - name: test
+              addr: 'nats://[default_nats]/test'
               timeout: 30s
               async: true
-            - name: test2 
-              addr: "nats://[default_nats]/test2"
+              await: []
+            - name: test2
+              addr: 'nats://[default_nats]/test2'
               timeout: 30s
-              await: 
-                - test              
-
+              async: false
+              await:
+                - test
