@@ -85,12 +85,12 @@ func (f *HttpProxy) Call(ctx context.Context, _ netio.RouteValues, c netio.Clone
 	return netio.CONTINUE, res, nil
 }
 
-func (f *HttpProxy) Handle(w http.ResponseWriter, r *http.Request, cb func(*netio.ShadowRequest)) {
+func (f *HttpProxy) Handle(w http.ResponseWriter, r *http.Request, rv netio.RouteValues) {
 	in, err := netio.NewShadowRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	cb(in)
+	in.RouteValues = rv
 	out, _err := netio.Cascade(in, f.Callers...)
 	if _err != nil {
 		http.Error(w, _err.Message(), _err.Status())

@@ -22,9 +22,7 @@ func main() {
 	err = parser.ParseV1(specsV1.Resources, func(u *url.URL, pattern string, method string, c []netio.Caller) {
 		proxy := proxies.NewHttpProxy(u, c)
 		server.HandleFunc(pattern, method, func(w http.ResponseWriter, r *http.Request, rv server.RouteValues) {
-			proxy.Handle(w, r, func(sr *netio.ShadowRequest) {
-				sr.RouteValues = netio.RouteValues(rv)
-			})
+			proxy.Handle(w, r, netio.RouteValues(rv))
 		})
 	})
 	if err != nil {
