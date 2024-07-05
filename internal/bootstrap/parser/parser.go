@@ -10,7 +10,7 @@ import (
 	"unicode"
 
 	"github.com/vedadiyan/iceberg/internal/callers/filters"
-	"github.com/vedadiyan/iceberg/internal/netio"
+	"github.com/vedadiyan/iceberg/internal/common/netio"
 	"gopkg.in/yaml.v3"
 )
 

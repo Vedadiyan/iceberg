@@ -9,7 +9,7 @@ import (
 	"github.com/vedadiyan/iceberg/internal/bootstrap/parser"
 	"github.com/vedadiyan/iceberg/internal/bootstrap/server"
 	"github.com/vedadiyan/iceberg/internal/callers/proxies"
-	"github.com/vedadiyan/iceberg/internal/netio"
+	"github.com/vedadiyan/iceberg/internal/common/netio"
 )
 
 func main() {

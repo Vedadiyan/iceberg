@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/nats-io/nats.go"
-	"github.com/vedadiyan/iceberg/internal/netio"
+	"github.com/vedadiyan/iceberg/internal/common/netio"
 	natshelpers "github.com/vedadiyan/nats-helpers"
 	"github.com/vedadiyan/nats-helpers/headers"
 	queue "github.com/vedadiyan/nats-helpers/queue"

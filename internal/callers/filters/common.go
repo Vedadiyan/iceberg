@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vedadiyan/iceberg/internal/netio"
+	"github.com/vedadiyan/iceberg/internal/common/netio"
 )
 
 type (

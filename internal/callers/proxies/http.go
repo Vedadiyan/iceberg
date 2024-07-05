@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/vedadiyan/iceberg/internal/netio"
+	"github.com/vedadiyan/iceberg/internal/common/netio"
 )
 
 type (
