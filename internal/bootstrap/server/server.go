@@ -40,7 +40,7 @@ func init() {
 	})
 }
 
-func WithCorsDefault() RegistrationOptions {
+func WithCORSDisabled() RegistrationOptions {
 	return func(opt *Options, rt *router.RouteTable, u *url.URL, f func(w http.ResponseWriter, r *http.Request, rv RouteValues)) {
 		opt.cors = true
 		opt.exposeHeaders = "*"
@@ -54,7 +54,7 @@ func WithCorsDefault() RegistrationOptions {
 	}
 }
 
-func WithCors(cors *CORS) RegistrationOptions {
+func WithCORS(cors *CORS) RegistrationOptions {
 	return func(opt *Options, rt *router.RouteTable, u *url.URL, f func(w http.ResponseWriter, r *http.Request, rv RouteValues)) {
 		opt.cors = true
 		opt.exposeHeaders = cors.ExposedHeaders
