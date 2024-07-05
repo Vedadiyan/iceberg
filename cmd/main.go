@@ -20,8 +20,11 @@ func main() {
 	}
 	specsV1 := specs.(*parser.SpecV1)
 	err = parser.ParseV1(specsV1.Resources, func(u *url.URL, pattern string, method string, c []netio.Caller) {
-		proxy := proxies.NewHttpProxy(u, c)
-		err := server.HandleFunc(pattern, method, func(w http.ResponseWriter, r *http.Request, rv server.RouteValues) {
+		proxy, err := proxies.NewProxy(u, c)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		err = server.HandleFunc(pattern, method, func(w http.ResponseWriter, r *http.Request, rv server.RouteValues) {
 			proxy.Handle(w, r, netio.RouteValues(rv))
 		})
 		if err != nil {

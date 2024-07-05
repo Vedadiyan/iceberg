@@ -5,7 +5,6 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -14,11 +13,8 @@ import (
 
 type (
 	WebSocketProxy struct {
-		Name           string
-		Address        *url.URL
-		Timeout        time.Duration
+		*Proxy
 		ConnectCallers []netio.Caller
-		_callers       []netio.Caller
 
 		in  *websocket.Conn
 		out *websocket.Conn
@@ -42,12 +38,11 @@ var (
 	}
 )
 
-func NewWebSocket(address *url.URL, callers []netio.Caller) *WebSocketProxy {
+func NewWebSocket(p *Proxy) *WebSocketProxy {
 	webSocketProxy := new(WebSocketProxy)
-	webSocketProxy.Address = address
-	webSocketProxy._callers = callers
+	webSocketProxy.Proxy = p
 	webSocketProxy.ConnectCallers = make([]netio.Caller, 0)
-	for _, caller := range callers {
+	for _, caller := range p.Callers {
 		if caller.GetLevel() == netio.LEVEL_CONNECT {
 			webSocketProxy.ConnectCallers = append(webSocketProxy.ConnectCallers, caller)
 		}
@@ -59,7 +54,7 @@ func NewWebSocketReaderProxy(webSocketProxy *WebSocketProxy) *WebSocketReaderPro
 	webSocketReaderProxy := new(WebSocketReaderProxy)
 	webSocketReaderProxy.WebSocketProxy = webSocketProxy
 	webSocketReaderProxy.Callers = make([]netio.Caller, 0)
-	for _, caller := range webSocketProxy._callers {
+	for _, caller := range webSocketProxy.Callers {
 		if caller.GetLevel() == netio.LEVEL_REQUEST {
 			webSocketReaderProxy.Callers = append(webSocketReaderProxy.Callers, caller)
 		}
@@ -71,7 +66,7 @@ func NewWebSocketWriterProxy(webSocketProxy *WebSocketProxy) *WebSocketWriterPro
 	webSocketWriterProxy := new(WebSocketWriterProxy)
 	webSocketWriterProxy.WebSocketProxy = webSocketProxy
 	webSocketWriterProxy.Callers = make([]netio.Caller, 0)
-	for _, caller := range webSocketProxy._callers {
+	for _, caller := range webSocketProxy.Callers {
 		if caller.GetLevel() == netio.LEVEL_RESPONSE {
 			webSocketWriterProxy.Callers = append(webSocketWriterProxy.Callers, caller)
 		}

@@ -3,7 +3,6 @@ package proxies
 import (
 	"context"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/vedadiyan/iceberg/internal/common/netio"
@@ -11,10 +10,7 @@ import (
 
 type (
 	HttpProxy struct {
-		Name      string
-		Address   *url.URL
-		Timeout   time.Duration
-		Callers   []netio.Caller
+		*Proxy
 		AwaitList []string
 
 		RequestUpdaters  []netio.RequestUpdater
@@ -22,10 +18,10 @@ type (
 	}
 )
 
-func NewHttpProxy(address *url.URL, callers []netio.Caller) *HttpProxy {
+func NewHttpProxy(p *Proxy) *HttpProxy {
 	httpProxy := new(HttpProxy)
-	httpProxy.Address = address
-	httpProxy.Callers = netio.Sort(append(callers, httpProxy)...)
+	httpProxy.Proxy = p
+	httpProxy.Callers = netio.Sort(append(httpProxy.Callers, httpProxy)...)
 	httpProxy.ResponseUpdaters = make([]netio.ResponseUpdater, 0)
 	httpProxy.RequestUpdaters = make([]netio.RequestUpdater, 0)
 	httpProxy.RequestUpdaters = append(httpProxy.RequestUpdaters, netio.ReqReplaceBody(), netio.ReqReplaceHeader(), netio.ReqReplaceTailer())
