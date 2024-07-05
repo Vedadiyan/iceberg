@@ -60,9 +60,11 @@ func HandleFunc(pattern string, method string, handler func(w http.ResponseWrite
 
 func ListenAndServe(addr string) {
 	server := http.Server{
-		Addr:        addr,
-		ReadTimeout: time.Second * 10,
-		Handler:     _mux,
+		Addr:              addr,
+		ReadTimeout:       time.Second * 10,
+		ReadHeaderTimeout: time.Second * 5,
+		WriteTimeout:      time.Second * 30,
+		Handler:           _mux,
 	}
 	_ = server.ListenAndServe()
 }
