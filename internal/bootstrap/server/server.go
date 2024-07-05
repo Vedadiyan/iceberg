@@ -44,7 +44,7 @@ func WithCorsDefault() RegistrationOptions {
 	return func(opt *Options, rt *router.RouteTable, u *url.URL, f func(w http.ResponseWriter, r *http.Request, rv RouteValues)) {
 		opt.cors = true
 		opt.exposeHeaders = "*"
-		rt.Register(u, "OPTION", func(w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
+		rt.Register(u, "OPTIONS", func(w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
 			w.Header().Add("access-control-allow-origin", "*")
 			w.Header().Add("access-control-allow-headers", "*")
 			w.Header().Add("access-control-max-age", "3628800")
@@ -58,7 +58,7 @@ func WithCors(cors *CORS) RegistrationOptions {
 	return func(opt *Options, rt *router.RouteTable, u *url.URL, f func(w http.ResponseWriter, r *http.Request, rv RouteValues)) {
 		opt.cors = true
 		opt.exposeHeaders = cors.ExposedHeaders
-		rt.Register(u, "OPTION", func(w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
+		rt.Register(u, "OPTIONS", func(w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
 			w.Header().Add("access-control-allow-origin", cors.AllowedOrigins)
 			w.Header().Add("access-control-allow-headers", cors.AllowedHeaders)
 			w.Header().Add("access-control-max-age", cors.MaxAge)
