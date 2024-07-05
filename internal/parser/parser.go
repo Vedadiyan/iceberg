@@ -3,7 +3,6 @@ package parser
 import (
 	"bytes"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -12,8 +11,6 @@ import (
 
 	"github.com/vedadiyan/iceberg/internal/filters"
 	"github.com/vedadiyan/iceberg/internal/netio"
-	"github.com/vedadiyan/iceberg/internal/proxies"
-	"github.com/vedadiyan/iceberg/internal/server"
 	"gopkg.in/yaml.v3"
 )
 
@@ -37,7 +34,7 @@ func Parse(in []byte) (Version, *Metadata, any, error) {
 	return 0, nil, nil, fmt.Errorf("usupported version %s", conf.APIVersion)
 }
 
-func ParseV1(specs *SpecV1) error {
+func ParseV1(specs *SpecV1, handleFunc func(*url.URL, []netio.Caller)) error {
 	for _, value := range specs.Resources {
 		url, err := url.Parse(value.Frontend)
 		if err != nil {
@@ -47,10 +44,7 @@ func ParseV1(specs *SpecV1) error {
 		if err != nil {
 			return nil
 		}
-		proxy := proxies.NewHttpProxy(url, netio.Sort(callers...))
-		server.HandleFunc(value.Backend, value.Method, func(w http.ResponseWriter, r *http.Request, rv server.RouteValues) {
-			proxy.Handle(w, r)
-		})
+		handleFunc(url, callers)
 	}
 	return nil
 }
