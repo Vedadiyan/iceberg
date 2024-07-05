@@ -10,7 +10,18 @@ import (
 
 type (
 	RouteValues         = router.RouteValues
-	RegistrationOptions func(*router.RouteTable, *url.URL, func(w http.ResponseWriter, r *http.Request, rv RouteValues))
+	RegistrationOptions func(*Options, *router.RouteTable, *url.URL, func(w http.ResponseWriter, r *http.Request, rv RouteValues))
+	Options             struct {
+		cors          bool
+		exposeHeaders string
+	}
+	CORS struct {
+		AllowedOrigins string
+		AllowedHeaders string
+		AllowedMethods string
+		MaxAge         string
+		ExposedHeaders string
+	}
 )
 
 var (
@@ -29,9 +40,31 @@ func init() {
 	})
 }
 
-func WithCors() RegistrationOptions {
-	return func(rt *router.RouteTable, u *url.URL, f func(w http.ResponseWriter, r *http.Request, rv RouteValues)) {
-		rt.Register(u, "OPTION", f)
+func WithCorsDefault() RegistrationOptions {
+	return func(opt *Options, rt *router.RouteTable, u *url.URL, f func(w http.ResponseWriter, r *http.Request, rv RouteValues)) {
+		opt.cors = true
+		opt.exposeHeaders = "*"
+		rt.Register(u, "OPTION", func(w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
+			w.Header().Add("access-control-allow-origin", "*")
+			w.Header().Add("access-control-allow-headers", "*")
+			w.Header().Add("access-control-max-age", "3628800")
+			w.Header().Add("access-control-allow-methods", "GET, DELETE, OPTIONS, POST, PUT")
+			w.WriteHeader(200)
+		})
+	}
+}
+
+func WithCors(cors *CORS) RegistrationOptions {
+	return func(opt *Options, rt *router.RouteTable, u *url.URL, f func(w http.ResponseWriter, r *http.Request, rv RouteValues)) {
+		opt.cors = true
+		opt.exposeHeaders = cors.ExposedHeaders
+		rt.Register(u, "OPTION", func(w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
+			w.Header().Add("access-control-allow-origin", cors.AllowedOrigins)
+			w.Header().Add("access-control-allow-headers", cors.AllowedHeaders)
+			w.Header().Add("access-control-max-age", cors.MaxAge)
+			w.Header().Add("access-control-allow-methods", cors.AllowedMethods)
+			w.WriteHeader(200)
+		})
 	}
 }
 
@@ -40,11 +73,18 @@ func HandleFunc(pattern string, method string, handler func(w http.ResponseWrite
 	if err != nil {
 		return err
 	}
+	var opt Options
 	for _, option := range options {
-		option(router.DefaultRouteTable(), url, handler)
+		option(&opt, router.DefaultRouteTable(), url, handler)
 	}
 	if len(method) == 0 {
 		method = "*"
+	}
+	handler = func(w http.ResponseWriter, r *http.Request, rv RouteValues) {
+		if opt.cors && len(opt.exposeHeaders) != 0 {
+			w.Header().Add("Access-Control-Expose-Headers", opt.exposeHeaders)
+		}
+		handler(w, r, rv)
 	}
 	if method == "*" {
 		router.DefaultRouteTable().Register(url, "GET", handler)
