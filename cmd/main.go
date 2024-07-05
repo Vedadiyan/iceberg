@@ -6,10 +6,10 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/vedadiyan/iceberg/internal/bootstrap/parser"
+	"github.com/vedadiyan/iceberg/internal/bootstrap/server"
 	"github.com/vedadiyan/iceberg/internal/callers/proxies"
 	"github.com/vedadiyan/iceberg/internal/netio"
-	"github.com/vedadiyan/iceberg/internal/parser"
-	"github.com/vedadiyan/iceberg/internal/server"
 )
 
 func main() {
