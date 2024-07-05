@@ -13,28 +13,24 @@ import (
 )
 
 type (
-	WebSocket struct {
-		Name    string
-		Address *url.URL
-		Timeout time.Duration
-
-		ResponseCaller []netio.Caller
-		AwaitList      []string
-
-		RequestUpdaters  []netio.RequestUpdater
-		ResponseUpdaters []netio.ResponseUpdater
+	WebSocketProxy struct {
+		Name           string
+		Address        *url.URL
+		Timeout        time.Duration
+		ConnectCallers []netio.Caller
+		_callers       []netio.Caller
 
 		in  *websocket.Conn
 		out *websocket.Conn
 	}
 
-	WebSocketReader struct {
-		*WebSocket
+	WebSocketReaderProxy struct {
+		*WebSocketProxy
 		Callers []netio.Caller
 	}
 
-	WebSocketWriter struct {
-		*WebSocket
+	WebSocketWriterProxy struct {
+		*WebSocketProxy
 		Callers []netio.Caller
 	}
 )
@@ -46,37 +42,64 @@ var (
 	}
 )
 
-func NewWebSocket(address *url.URL, callers []netio.Caller) *WebSocket {
-	httpProxy := new(WebSocket)
-	httpProxy.Address = address
-	httpProxy.ResponseUpdaters = make([]netio.ResponseUpdater, 0)
-	httpProxy.RequestUpdaters = make([]netio.RequestUpdater, 0)
-	httpProxy.RequestUpdaters = append(httpProxy.RequestUpdaters, netio.ReqReplaceBody(), netio.ReqReplaceHeader(), netio.ReqReplaceTailer())
-	httpProxy.ResponseUpdaters = append(httpProxy.ResponseUpdaters, netio.ResReplaceBody(), netio.ResReplaceHeader(), netio.ResReplaceTailer())
-	return httpProxy
+func NewWebSocket(address *url.URL, callers []netio.Caller) *WebSocketProxy {
+	webSocketProxy := new(WebSocketProxy)
+	webSocketProxy.Address = address
+	webSocketProxy._callers = callers
+	webSocketProxy.ConnectCallers = make([]netio.Caller, 0)
+	for _, caller := range callers {
+		if caller.GetLevel() == netio.LEVEL_CONNECT {
+			webSocketProxy.ConnectCallers = append(webSocketProxy.ConnectCallers, caller)
+		}
+	}
+	return webSocketProxy
 }
 
-func (f *WebSocket) GetRequestUpdaters() []netio.RequestUpdater {
-	return f.RequestUpdaters
+func NewWebSocketReaderProxy(webSocketProxy *WebSocketProxy) *WebSocketReaderProxy {
+	webSocketReaderProxy := new(WebSocketReaderProxy)
+	webSocketReaderProxy.WebSocketProxy = webSocketProxy
+	webSocketReaderProxy.Callers = make([]netio.Caller, 0)
+	for _, caller := range webSocketProxy._callers {
+		if caller.GetLevel() == netio.LEVEL_REQUEST {
+			webSocketReaderProxy.Callers = append(webSocketReaderProxy.Callers, caller)
+		}
+	}
+	return webSocketReaderProxy
 }
 
-func (f *WebSocket) GetResponseUpdaters() []netio.ResponseUpdater {
-	return f.ResponseUpdaters
+func NewWebSocketWriterProxy(webSocketProxy *WebSocketProxy) *WebSocketWriterProxy {
+	webSocketWriterProxy := new(WebSocketWriterProxy)
+	webSocketWriterProxy.WebSocketProxy = webSocketProxy
+	webSocketWriterProxy.Callers = make([]netio.Caller, 0)
+	for _, caller := range webSocketProxy._callers {
+		if caller.GetLevel() == netio.LEVEL_RESPONSE {
+			webSocketWriterProxy.Callers = append(webSocketWriterProxy.Callers, caller)
+		}
+	}
+	return webSocketWriterProxy
 }
 
-func (f *WebSocket) GetName() string {
+func (f *WebSocketProxy) GetRequestUpdaters() []netio.RequestUpdater {
+	return nil
+}
+
+func (f *WebSocketProxy) GetResponseUpdaters() []netio.ResponseUpdater {
+	return nil
+}
+
+func (f *WebSocketProxy) GetName() string {
 	return f.Name
 }
 
-func (f *WebSocket) GetAwaitList() []string {
-	return f.AwaitList
+func (f *WebSocketProxy) GetAwaitList() []string {
+	return nil
 }
 
-func (f *WebSocket) GetIsParallel() bool {
+func (f *WebSocketProxy) GetIsParallel() bool {
 	return false
 }
 
-func (f *WebSocket) GetContext() context.Context {
+func (f *WebSocketProxy) GetContext() context.Context {
 	ctx, cancel := context.WithCancel(context.TODO())
 	timeout := f.Timeout
 	if timeout == 0 {
@@ -88,11 +111,11 @@ func (f *WebSocket) GetContext() context.Context {
 	return ctx
 }
 
-func (f *WebSocket) GetLevel() netio.Level {
+func (f *WebSocketProxy) GetLevel() netio.Level {
 	return netio.LEVEL_NONE
 }
 
-func (f *WebSocketReader) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+func (f *WebSocketReaderProxy) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
 	for {
 		t, sock, err := f.in.NextReader()
 		if err != nil {
@@ -123,7 +146,7 @@ func (f *WebSocketReader) Call(ctx context.Context, _ netio.RouteValues, c netio
 	}
 }
 
-func (f *WebSocketWriter) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+func (f *WebSocketWriterProxy) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
 	for {
 		t, sock, err := f.out.NextReader()
 		if err != nil {
@@ -143,7 +166,7 @@ func (f *WebSocketWriter) Call(ctx context.Context, _ netio.RouteValues, c netio
 		if err != nil {
 			continue
 		}
-		res, _err := netio.Cascade(in, f.ResponseCaller...)
+		res, _err := netio.Cascade(in, f.Callers...)
 		if _err != nil {
 			continue
 		}
@@ -155,13 +178,21 @@ func (f *WebSocketWriter) Call(ctx context.Context, _ netio.RouteValues, c netio
 	}
 }
 
-func (f *WebSocket) Handle(w http.ResponseWriter, r *http.Request, rv netio.RouteValues) {
-	reader := new(WebSocketReader)
-	writer := new(WebSocketWriter)
+func (f *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv netio.RouteValues) {
 	in, err := netio.NewShadowRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+	_, _err := netio.Cascade(in, f.ConnectCallers...)
+	if _err != nil {
+		http.Error(w, _err.Message(), _err.Status())
+	}
+	_, err = upgrader.Upgrade(w, r, http.Header{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+	reader := NewWebSocketReaderProxy(f)
+	writer := NewWebSocketWriterProxy(f)
 	go reader.Call(context.TODO(), nil, in.CloneRequest, nil)
 	go writer.Call(context.TODO(), nil, in.CloneRequest, nil)
 }
