@@ -129,7 +129,7 @@ func (f *WebSocketReaderProxy) Call(ctx context.Context, _ netio.RouteValues, c 
 	res.Header = http.Header{
 		"Message-Type": []string{fmt.Sprintf("%d", t)},
 	}
-	return netio.CONTINUE, res, nil
+	return netio.TERM, res, nil
 }
 
 func (f *WebSocketWriterProxy) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
