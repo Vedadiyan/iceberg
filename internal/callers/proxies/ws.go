@@ -3,8 +3,10 @@ package proxies
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -16,8 +18,9 @@ type (
 		*Proxy
 		ConnectCallers []netio.Caller
 
-		in  *websocket.Conn
-		out *websocket.Conn
+		ws *websocket.Conn
+
+		listening bool
 	}
 
 	WebSocketReaderProxy struct {
@@ -111,74 +114,48 @@ func (f *WebSocketProxy) GetLevel() netio.Level {
 }
 
 func (f *WebSocketReaderProxy) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
-	for {
-		t, sock, err := f.in.NextReader()
-		if err != nil {
-			continue
-		}
-		data, err := io.ReadAll(sock)
-		if err != nil {
-			continue
-		}
-		clone, err := c()
-		if err != nil {
-			continue
-		}
-		clone.Body = io.NopCloser(bytes.NewReader(data))
-		in, err := netio.NewShadowRequest(clone)
-		if err != nil {
-			continue
-		}
-		res, _err := netio.Cascade(in, f.Callers...)
-		if _err != nil {
-			continue
-		}
-		data, err = io.ReadAll(res.Body)
-		if err != nil {
-			continue
-		}
-		f.out.WriteMessage(t, data)
+	t, sock, err := f.ws.NextReader()
+	if err != nil {
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
+	data, err := io.ReadAll(sock)
+	if err != nil {
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
+	}
+	res := new(http.Response)
+	res.Body = io.NopCloser(bytes.NewReader(data))
+	res.Header = http.Header{
+		"Message-Type": []string{fmt.Sprintf("%d", t)},
+	}
+	return netio.TERM, res, nil
 }
 
 func (f *WebSocketWriterProxy) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
-	for {
-		t, sock, err := f.out.NextReader()
-		if err != nil {
-			continue
-		}
-		data, err := io.ReadAll(sock)
-		if err != nil {
-			continue
-		}
-
-		clone, err := c()
-		if err != nil {
-			continue
-		}
-		clone.Body = io.NopCloser(bytes.NewReader(data))
-		in, err := netio.NewShadowRequest(clone)
-		if err != nil {
-			continue
-		}
-		res, _err := netio.Cascade(in, f.Callers...)
-		if _err != nil {
-			continue
-		}
-		data, err = io.ReadAll(res.Body)
-		if err != nil {
-			continue
-		}
-		f.in.WriteMessage(t, data)
+	r, err := c()
+	if err != nil {
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
+	data, err := io.ReadAll(r.Body)
+	if err != nil {
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
+	}
+	t, err := strconv.Atoi(r.Header.Get("Message-Type"))
+	if err != nil {
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
+	}
+	err = f.ws.WriteMessage(t, data)
+	if err != nil {
+		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
+	}
+	return netio.TERM, nil, nil
 }
 
-func (f *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv netio.RouteValues) {
+func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv netio.RouteValues) {
 	req, err := netio.NewShadowRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	_, _err := netio.Cascade(req, f.ConnectCallers...)
+	_, _err := netio.Cascade(req, inProxy.ConnectCallers...)
 	if _err != nil {
 		http.Error(w, _err.Message(), _err.Status())
 	}
@@ -186,14 +163,41 @@ func (f *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv netio
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	f.in = in
-	out, _, err := websocket.DefaultDialer.Dial(f.Address.String(), r.Header)
+	inProxy.ws = in
+	inProxy.listening = true
+	out, _, err := websocket.DefaultDialer.Dial(inProxy.Address.String(), r.Header)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	f.out = out
-	reader := NewWebSocketReaderProxy(f)
-	writer := NewWebSocketWriterProxy(f)
-	go reader.Call(context.TODO(), nil, req.CloneRequest, nil)
-	go writer.Call(context.TODO(), nil, req.CloneRequest, nil)
+	inReader := NewWebSocketReaderProxy(inProxy)
+	inWriter := NewWebSocketWriterProxy(inProxy)
+
+	outProxy := &WebSocketProxy{
+		ws:        out,
+		listening: true,
+	}
+	in.SetCloseHandler(func(code int, text string) error {
+		inProxy.listening = false
+		outProxy.listening = false
+		return nil
+	})
+	outReader := NewWebSocketReaderProxy(outProxy)
+	outWriter := NewWebSocketWriterProxy(outProxy)
+
+	inReader.Callers = append([]netio.Caller{inReader}, inReader.Callers...)
+	inReader.Callers = append(inReader.Callers, outWriter)
+
+	outReader.Callers = append([]netio.Caller{outReader}, inWriter.Callers...)
+	outReader.Callers = append(outReader.Callers, inWriter)
+
+	go func() {
+		for inProxy.listening {
+			_, _ = netio.Cascade(req, inReader.Callers...)
+		}
+	}()
+	go func() {
+		for outProxy.listening {
+			_, _ = netio.Cascade(req, outReader.Callers...)
+		}
+	}()
 }
