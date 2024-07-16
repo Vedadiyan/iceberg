@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/vedadiyan/iceberg/internal/bootstrap"
 	"github.com/vedadiyan/iceberg/internal/callers/filters"
 	"github.com/vedadiyan/iceberg/internal/common/netio"
 	"github.com/vedadiyan/iceberg/internal/middleware/cache"
@@ -36,7 +37,7 @@ func Parse(in []byte) (Version, *Metadata, any, error) {
 	return 0, nil, nil, fmt.Errorf("usupported version %s", conf.APIVersion)
 }
 
-func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string, string, []netio.Caller)) error {
+func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string, string, []netio.Caller, ...bootstrap.RegistrationOptions)) error {
 	for _, value := range resourcesV1 {
 		url, err := url.Parse(value.Frontend)
 		if err != nil {
@@ -58,6 +59,9 @@ func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string
 			return nil
 		}
 		callers = append(callers, filters...)
+		if value.Use.Cors != nil {
+
+		}
 		handleFunc(url, value.Backend, value.Method, callers)
 	}
 	return nil

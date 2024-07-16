@@ -41,7 +41,7 @@ type (
 	}
 	UseV1 struct {
 		Cache *CacheV1 `yaml:"cache"`
-		Cors  string   `yaml:"cors"`
+		Cors  *string  `yaml:"cors"`
 		OPA   *OpaV1   `yaml:"opa"`
 	}
 	CacheV1 struct {
