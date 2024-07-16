@@ -1,6 +1,7 @@
 package opa
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -129,4 +130,19 @@ func (opaNats *OpaNats) Eval(r *http.Request, rv netio.RouteValues) (bool, strin
 		return false, res.Header.Get("X-Error"), nil
 	}
 	return true, "", nil
+}
+
+func (opaNats *OpaNats) Call(ctc context.Context, rv netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+	r, err := c()
+	if err != nil {
+		return false, nil, netio.NewError(err.Error(), 500)
+	}
+	res, msg, err := opaNats.Eval(r, rv)
+	if err != nil {
+		return false, nil, netio.NewError(err.Error(), 500)
+	}
+	if !res {
+		return false, nil, netio.NewError(msg, 400)
+	}
+	return true, nil, nil
 }
