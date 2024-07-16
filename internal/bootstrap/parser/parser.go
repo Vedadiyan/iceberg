@@ -62,7 +62,6 @@ func ParseOpaV1(value ResourceV1) ([]netio.Caller, error) {
 		return nil, nil
 	}
 	out := make([]netio.Caller, 0)
-
 	url, err := url.Parse(value.Use.OPA.Agent)
 	if err != nil {
 		return nil, err
