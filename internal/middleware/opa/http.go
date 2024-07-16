@@ -96,7 +96,10 @@ func NewOpaHttpForNats(opaHttp *OpaHttp) (*OpaHttpForNats, error) {
 		if t == POLICY_TYPE_LOCAL {
 			name := fmt.Sprintf("%s_%s", opaHttp.Opa.AppName, p)
 			policies = append(policies, name)
-			kv.Put(name, []byte(os.Getenv(p)))
+			_, err := kv.Put(name, []byte(os.Getenv(p)))
+			if err != nil {
+				return nil, err
+			}
 			continue
 		}
 		policies = append(policies, p)
