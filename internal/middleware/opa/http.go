@@ -1,7 +1,9 @@
 package opa
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
+	"github.com/vedadiyan/iceberg/internal/common/netio"
 )
 
 type (
@@ -108,12 +111,27 @@ func NewOpaHttpForNats(opaHttp *OpaHttp) (*OpaHttpForNats, error) {
 	return opaHttpForNats, nil
 }
 
-func (opaHttpForNats *OpaHttpForNats) Eval(r *http.Request) (bool, string, error) {
+func (opaHttpForNats *OpaHttpForNats) Eval(r *http.Request, rv netio.RouteValues) (bool, string, error) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return false, "", err
+	}
+	data := map[string]any{
+		"path":    rv,
+		"headers": r.Header,
+		"method":  r.Method,
+		"data":    body,
+	}
+	json, err := json.Marshal(data)
+	if err != nil {
+		return false, "", err
+	}
 	res, err := opaHttpForNats.conn.RequestMsg(&nats.Msg{
 		Subject: opaHttpForNats.Subject,
 		Header: nats.Header{
 			"X-Policies": opaHttpForNats.Policies,
 		},
+		Data: json,
 	}, time.Second)
 	if err != nil {
 		return false, "", err
