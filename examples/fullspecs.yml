@@ -39,8 +39,14 @@ spec:
           key: 'test_${:route_value}_${?query_param}_${body}_${method}'
         # cors policy definition
         #   default:   disables cors
-        #   custom:    TODO
+        #   custom:    
+        #     allowedOrigins: comma separated values 
+        #     allowedHeaders: comma separated values 
+        #     allowedMethods: comma separated values 
+        #     maxAge:         number         
+        #     exposedHeaders: comma separated values 
         cors: default
+        # opa policy enforcement
         opa: 
           # Iceberg requires it's own OPA Agent 
           agent: 'nats://[default_nats]/$OPA_AGENT'
@@ -92,6 +98,7 @@ spec:
               - X-Test-Header
             body: true
           # a sequence of callbacks that run independently of subsequent filters  
+          # callback definition structure is the same as filters except that it does not support levels
           next:
             - name: test
               addr: 'nats://[default_nats]/test'
