@@ -14,6 +14,12 @@ import (
 )
 
 func main() {
+	data, err := os.ReadFile("../examples/fullspecs.yml")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	os.Setenv("ICERBERG_CONFIG", string(data))
+
 	config := os.Getenv("ICERBERG_CONFIG")
 	_, _, specs, err := parser.Parse([]byte(config))
 	if err != nil {
