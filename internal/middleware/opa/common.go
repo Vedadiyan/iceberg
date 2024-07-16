@@ -13,11 +13,13 @@ type (
 	Evaluator interface {
 		Eval(*http.Request) (bool, string, error)
 	}
-	Opa struct {
+	OpaType string
+	Opa     struct {
 		AppName  string
 		Agent    *url.URL
 		Timeout  time.Duration
 		Policies map[string]PolicyType
+		Type     OpaType
 	}
 	Union[T any] struct {
 		Error error
@@ -25,8 +27,28 @@ type (
 	}
 )
 
+const (
+	OPA_TYPE_HTTP       OpaType = "http"
+	OPA_TYPE_WS_SEND    OpaType = "send"
+	OPA_TYPE_WS_RECEIVE OpaType = "receive"
+)
+
 func (opa *Opa) GetLevel() netio.Level {
-	return netio.LEVEL_CONNECT
+	switch opa.Type {
+	case OPA_TYPE_HTTP:
+		{
+			return netio.LEVEL_CONNECT
+		}
+	case OPA_TYPE_WS_SEND:
+		{
+			return netio.LEVEL_REQUEST
+		}
+	case OPA_TYPE_WS_RECEIVE:
+		{
+			return netio.LEVEL_RESPONSE
+		}
+	}
+	return netio.LEVEL_NONE
 }
 
 func (opa *Opa) GetIsParallel() bool {
