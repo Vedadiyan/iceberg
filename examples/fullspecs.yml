@@ -10,15 +10,53 @@ spec:
       method: ''
       use:
         cache:
+          # currently only jetsream is supported
+          # support for redis is planned
           addr: 'jetstream://[[default_nats]]/bucket_name'
           ttl: 30s
+          # key maker syntax:
+          #   ${:PARAM_NAME}:         captures a route parameter
+          #   ${?QUERY_PARAM_NAME}:   captures a query parameter
+          #   ${body}:                creates the hash of the request body
+          #   ${method}:              captures the request method
+          #   ${[HEADER_NAME]}:       captures a header 
           key: 'test_${:route_value}_${?query_param}_${body}_${method}'
         cors: default
+        opa: 
+          # Iceberg requires it's own OPA Agent 
+          agent: 'nats://[default_nats]/$OPA_AGENT'
+          # policy types:
+          #   local:  must come from an environment variable with the same name 
+          #   remote: must be already available to the agent
+          http: 
+            - test-policy: local
+          ws:
+            send:
+              - test-ws-policy: remote
+            receieve:
+              - another-ws-policy: remote
       filters:
         - name: request-log
+          # supports:
+          #   core nats (nats://)
+          #   jetstream (jetstream://)
+          #   http      (http://)
+          #   https     (https://) 
           addr: 'jetstream://[default_nats]/abc'
+          # values:
+          #   connect:  runs on http connect 
+          #   request:  runs before handling request
+          #   response: runs before handling response
           level: request
+          # units:
+          #   ms: milliseconds
+          #   s : seconds
+          #   m : minutes
+          #   h : hours
           timeout: 30s
+          # values:
+          #   default
+          #   continue
           onError: default
           async: false
           await: []
