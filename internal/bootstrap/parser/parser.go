@@ -59,10 +59,11 @@ func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string
 			return nil
 		}
 		callers = append(callers, filters...)
+		opts := make([]bootstrap.RegistrationOptions, 0)
 		if value.Use.Cors != nil {
-
+			opts = append(opts, bootstrap.WithCORSDisabled())
 		}
-		handleFunc(url, value.Backend, value.Method, callers)
+		handleFunc(url, value.Backend, value.Method, callers, opts...)
 	}
 	return nil
 }
