@@ -109,7 +109,7 @@ func (opaHttpForNats *OpaHttpForNats) Eval(r *http.Request) (bool, string, error
 	res, err := opaHttpForNats.conn.RequestMsg(&nats.Msg{
 		Subject: opaHttpForNats.Subject,
 		Header: nats.Header{
-			"X-Plocies": opaHttpForNats.Policies,
+			"X-Policies": opaHttpForNats.Policies,
 		},
 	}, time.Second)
 	if err != nil {
