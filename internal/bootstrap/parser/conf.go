@@ -40,13 +40,23 @@ type (
 		Body    bool     `yaml:"body"`
 	}
 	UseV1 struct {
-		Cache CacheV1 `yaml:"cache"`
-		Cors  string  `yaml:"cors"`
+		Cache *CacheV1 `yaml:"cache"`
+		Cors  string   `yaml:"cors"`
+		OPA   *OpaV1   `yaml:"opa"`
 	}
 	CacheV1 struct {
 		Addr string `yaml:"addr"`
 		TTL  string `yaml:"ttl"`
 		Key  string `yaml:"key"`
+	}
+	OpaV1 struct {
+		Agent string  `yaml:"agent"`
+		Http  []any   `yaml:"http"`
+		WS    OpaWSV1 `yaml:"ws"`
+	}
+	OpaWSV1 struct {
+		Send    []any `yaml:"send"`
+		Receive []any `yaml:"receive"`
 	}
 )
 

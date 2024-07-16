@@ -11,6 +11,7 @@ import (
 
 	"github.com/vedadiyan/iceberg/internal/callers/filters"
 	"github.com/vedadiyan/iceberg/internal/common/netio"
+	"github.com/vedadiyan/iceberg/internal/middleware/opa"
 	"gopkg.in/yaml.v3"
 )
 
@@ -44,9 +45,99 @@ func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string
 		if err != nil {
 			return nil
 		}
-		handleFunc(url, value.Backend, value.Method, callers)
+		middleware := make([]netio.Caller, 0)
+		if value.Use.OPA != nil {
+			url, err := url.Parse(value.Use.OPA.Agent)
+			if err != nil {
+				return err
+			}
+			httpPolicies, err := ParsePolicy(value.Use.OPA.Http)
+			if err != nil {
+				return err
+			}
+			sendPolicies, err := ParsePolicy(value.Use.OPA.WS.Send)
+			if err != nil {
+				return err
+			}
+			receivePolicy, err := ParsePolicy(value.Use.OPA.WS.Receive)
+			if err != nil {
+				return err
+			}
+			http, err := opa.NewOpaNats(&opa.Opa{
+				AppName:  "",
+				Agent:    url,
+				Policies: httpPolicies,
+				Type:     opa.OPA_TYPE_HTTP,
+				Timeout:  time.Second * 30,
+			})
+			if err != nil {
+				return err
+			}
+			send, err := opa.NewOpaNats(&opa.Opa{
+				AppName:  "",
+				Agent:    url,
+				Policies: sendPolicies,
+				Type:     opa.OPA_TYPE_WS_SEND,
+				Timeout:  time.Second * 30,
+			})
+			if err != nil {
+				return err
+			}
+			receive, err := opa.NewOpaNats(&opa.Opa{
+				AppName:  "",
+				Agent:    url,
+				Policies: receivePolicy,
+				Type:     opa.OPA_TYPE_WS_RECEIVE,
+				Timeout:  time.Second * 30,
+			})
+			if err != nil {
+				return err
+			}
+			middleware = append(middleware, http)
+			middleware = append(middleware, send)
+			middleware = append(middleware, receive)
+		}
+		middleware = append(middleware, callers...)
+		handleFunc(url, value.Backend, value.Method, middleware)
 	}
 	return nil
+}
+
+func ParsePolicy(in []any) (map[string]opa.PolicyType, error) {
+	policies := make(map[string]opa.PolicyType)
+	for _, item := range in {
+		switch item := item.(type) {
+		case map[string]any:
+			{
+				for key, value := range item {
+					val, ok := value.(string)
+					if !ok {
+						return nil, fmt.Errorf("expected string but found %T", value)
+					}
+					switch strings.ToLower(val) {
+					case "local":
+						{
+							policies[key] = opa.POLICY_TYPE_LOCAL
+						}
+					case "remote":
+						{
+							policies[key] = opa.POLICY_TYPE_REMOTE
+						}
+					default:
+						{
+							return nil, fmt.Errorf("unsupported value %s", val)
+						}
+					}
+					break
+				}
+			}
+		case string:
+			{
+				policies[item] = opa.POLICY_TYPE_REMOTE
+			}
+		}
+	}
+	return policies, nil
 }
 
 func ParseFiltersV1(in []FilterV1, supportsLevel bool) ([]netio.Caller, error) {

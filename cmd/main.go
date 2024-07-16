@@ -10,9 +10,17 @@ import (
 	"github.com/vedadiyan/iceberg/internal/bootstrap/server"
 	"github.com/vedadiyan/iceberg/internal/callers/proxies"
 	"github.com/vedadiyan/iceberg/internal/common/netio"
+	"gopkg.in/yaml.v3"
 )
 
 func main() {
+	test := `agent: 'nats://[default_nats]/$OPA_AGENT'
+http:
+- test-policy: local
+- Ok`
+	x := new(parser.OpaV1)
+	err := yaml.Unmarshal([]byte(test), x)
+
 	config := os.Getenv("ICERBERG_CONFIG")
 	_, _, specs, err := parser.Parse([]byte(config))
 	if err != nil {
