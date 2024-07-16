@@ -58,58 +58,60 @@ func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string
 }
 
 func ParseOpaV1(value ResourceV1) ([]netio.Caller, error) {
-	out := make([]netio.Caller, 0)
-	if value.Use.OPA != nil {
-		url, err := url.Parse(value.Use.OPA.Agent)
-		if err != nil {
-			return nil, err
-		}
-		httpPolicies, err := ParsePolicy(value.Use.OPA.Http)
-		if err != nil {
-			return nil, err
-		}
-		sendPolicies, err := ParsePolicy(value.Use.OPA.WS.Send)
-		if err != nil {
-			return nil, err
-		}
-		receivePolicy, err := ParsePolicy(value.Use.OPA.WS.Receive)
-		if err != nil {
-			return nil, err
-		}
-		http, err := opa.NewOpaNats(&opa.Opa{
-			AppName:  "",
-			Agent:    url,
-			Policies: httpPolicies,
-			Type:     opa.OPA_TYPE_HTTP,
-			Timeout:  time.Second * 30,
-		})
-		if err != nil {
-			return nil, err
-		}
-		send, err := opa.NewOpaNats(&opa.Opa{
-			AppName:  "",
-			Agent:    url,
-			Policies: sendPolicies,
-			Type:     opa.OPA_TYPE_WS_SEND,
-			Timeout:  time.Second * 30,
-		})
-		if err != nil {
-			return nil, err
-		}
-		receive, err := opa.NewOpaNats(&opa.Opa{
-			AppName:  "",
-			Agent:    url,
-			Policies: receivePolicy,
-			Type:     opa.OPA_TYPE_WS_RECEIVE,
-			Timeout:  time.Second * 30,
-		})
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, http)
-		out = append(out, send)
-		out = append(out, receive)
+	if value.Use.OPA == nil {
+		return nil, nil
 	}
+	out := make([]netio.Caller, 0)
+
+	url, err := url.Parse(value.Use.OPA.Agent)
+	if err != nil {
+		return nil, err
+	}
+	httpPolicies, err := ParsePolicy(value.Use.OPA.Http)
+	if err != nil {
+		return nil, err
+	}
+	sendPolicies, err := ParsePolicy(value.Use.OPA.WS.Send)
+	if err != nil {
+		return nil, err
+	}
+	receivePolicy, err := ParsePolicy(value.Use.OPA.WS.Receive)
+	if err != nil {
+		return nil, err
+	}
+	http, err := opa.NewOpaNats(&opa.Opa{
+		AppName:  "",
+		Agent:    url,
+		Policies: httpPolicies,
+		Type:     opa.OPA_TYPE_HTTP,
+		Timeout:  time.Second * 30,
+	})
+	if err != nil {
+		return nil, err
+	}
+	send, err := opa.NewOpaNats(&opa.Opa{
+		AppName:  "",
+		Agent:    url,
+		Policies: sendPolicies,
+		Type:     opa.OPA_TYPE_WS_SEND,
+		Timeout:  time.Second * 30,
+	})
+	if err != nil {
+		return nil, err
+	}
+	receive, err := opa.NewOpaNats(&opa.Opa{
+		AppName:  "",
+		Agent:    url,
+		Policies: receivePolicy,
+		Type:     opa.OPA_TYPE_WS_RECEIVE,
+		Timeout:  time.Second * 30,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out = append(out, http)
+	out = append(out, send)
+	out = append(out, receive)
 	return out, nil
 }
 
