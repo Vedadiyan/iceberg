@@ -3,6 +3,7 @@ package opa
 import (
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type (
@@ -12,6 +13,7 @@ type (
 	Opa struct {
 		AppName string
 		Agent   *url.URL
+		Timeout time.Duration
 	}
 	Union[T any] struct {
 		Error error

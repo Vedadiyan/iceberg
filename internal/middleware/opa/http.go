@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -132,7 +131,7 @@ func (opaHttpForNats *OpaHttpForNats) Eval(r *http.Request, rv netio.RouteValues
 			"X-Policies": opaHttpForNats.Policies,
 		},
 		Data: json,
-	}, time.Second)
+	}, opaHttpForNats.OpaHttp.Opa.Timeout)
 	if err != nil {
 		return false, "", err
 	}
