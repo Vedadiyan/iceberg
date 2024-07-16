@@ -1,14 +1,30 @@
 apiVersion: apps/v1
 metadata:
+  # must be a unique name to identify the app
   name: test
 spec:
+  # endpoint to which Icebreg must listen to 
   listen: ''
+  # the sequence of proxies to internal services
   resources:
+    # proxy identifier 
     main-api:
+      # the url through which Icerberg must serve the proxy
+      # supports standard template: /api/v1/:route_param
       frontend: ''
+      # the base url to which the request must be proxied
       backend: ''
+      # values:
+      #   head
+      #   get
+      #   post
+      #   put
+      #   patch
+      #   delete
       method: ''
+      # built-in middleware
       use:
+        # cache layer
         cache:
           # currently only jetsream is supported
           # support for redis is planned
@@ -21,20 +37,28 @@ spec:
           #   ${method}:              captures the request method
           #   ${[HEADER_NAME]}:       captures a header 
           key: 'test_${:route_value}_${?query_param}_${body}_${method}'
+        # cors policy definition
+        #   default:   disables cors
+        #   custom:    TODO
         cors: default
         opa: 
           # Iceberg requires it's own OPA Agent 
           agent: 'nats://[default_nats]/$OPA_AGENT'
-          # policy types:
-          #   local:  must come from an environment variable with the same name 
-          #   remote: must be already available to the agent
+          # invokes before any filter on http connect
           http: 
+            # policy types:
+            #   local:  must come from an environment variable with the same name 
+            #   remote: must be already available to the agent
             - test-policy: local
+          # invokes after a web socket upgrade
           ws:
+            # invokes before any filter on a send message event 
             send:
               - test-ws-policy: remote
+            # invokes before any filter on a receive message event
             receieve:
               - another-ws-policy: remote
+      # a sequence of external middleware to control/re-write/shape traffic 
       filters:
         - name: request-log
           # supports:
@@ -58,12 +82,16 @@ spec:
           #   default
           #   continue
           onError: default
+          # runs the filter asynchronously
           async: false
+          # list of asynchronous filters to await
           await: []
+          # specifies elements that can be passed to the next request/response
           exchange:
             headers:
               - X-Test-Header
             body: true
+          # a sequence of callbacks that run independently of subsequent filters  
           next:
             - name: test
               addr: 'nats://[default_nats]/test'
