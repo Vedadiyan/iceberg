@@ -11,9 +11,10 @@ type (
 		Eval(*http.Request) (bool, string, error)
 	}
 	Opa struct {
-		AppName string
-		Agent   *url.URL
-		Timeout time.Duration
+		AppName  string
+		Agent    *url.URL
+		Timeout  time.Duration
+		Policies map[string]PolicyType
 	}
 	Union[T any] struct {
 		Error error

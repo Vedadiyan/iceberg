@@ -16,12 +16,8 @@ import (
 
 type (
 	PolicyType string
-	OpaHttp    struct {
+	OpaNats    struct {
 		*Opa
-		Policies map[string]PolicyType
-	}
-	OpaHttpForNats struct {
-		*OpaHttp
 		Host     string
 		Subject  string
 		conn     *nats.Conn
@@ -66,37 +62,30 @@ func GetKV(conn *nats.Conn, bucket string) (nats.KeyValue, error) {
 	return kv, nil
 }
 
-func NewOpaHttp(opa *Opa, policies map[string]PolicyType) *OpaHttp {
-	opaHttp := new(OpaHttp)
-	opaHttp.Opa = opa
-	opaHttp.Policies = policies
-	return opaHttp
-}
-
-func NewOpaHttpForNats(opaHttp *OpaHttp) (*OpaHttpForNats, error) {
-	opaHttpForNats := new(OpaHttpForNats)
-	opaHttpForNats.OpaHttp = opaHttp
-	host := opaHttp.Agent.Host
+func NewOpaNats(opa *Opa) (*OpaNats, error) {
+	opaNats := new(OpaNats)
+	opaNats.Opa = opa
+	host := opa.Agent.Host
 	if strings.HasPrefix(host, "[[") && strings.HasSuffix(host, "]]") {
 		host = strings.TrimLeft(host, "[")
 		host = strings.TrimRight(host, "]")
 		host = os.Getenv(host)
 	}
-	opaHttpForNats.Host = host
-	opaHttpForNats.Subject = strings.TrimPrefix(opaHttp.Agent.Path, "/")
+	opaNats.Host = host
+	opaNats.Subject = strings.TrimPrefix(opa.Agent.Path, "/")
 	conn, err := GetConn(host)
 	if err != nil {
 		return nil, err
 	}
-	opaHttpForNats.conn = conn
+	opaNats.conn = conn
 	kv, err := GetKV(conn, "OPA_STORE")
 	if err != nil {
 		return nil, err
 	}
 	policies := make([]string, 0)
-	for p, t := range opaHttp.Policies {
+	for p, t := range opa.Policies {
 		if t == POLICY_TYPE_LOCAL {
-			name := fmt.Sprintf("%s_%s", opaHttp.Opa.AppName, p)
+			name := fmt.Sprintf("%s_%s", opa.AppName, p)
 			policies = append(policies, name)
 			_, err := kv.Put(name, []byte(os.Getenv(p)))
 			if err != nil {
@@ -106,11 +95,11 @@ func NewOpaHttpForNats(opaHttp *OpaHttp) (*OpaHttpForNats, error) {
 		}
 		policies = append(policies, p)
 	}
-	opaHttpForNats.Policies = policies
-	return opaHttpForNats, nil
+	opaNats.Policies = policies
+	return opaNats, nil
 }
 
-func (opaHttpForNats *OpaHttpForNats) Eval(r *http.Request, rv netio.RouteValues) (bool, string, error) {
+func (opaNats *OpaNats) Eval(r *http.Request, rv netio.RouteValues) (bool, string, error) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return false, "", err
@@ -125,13 +114,13 @@ func (opaHttpForNats *OpaHttpForNats) Eval(r *http.Request, rv netio.RouteValues
 	if err != nil {
 		return false, "", err
 	}
-	res, err := opaHttpForNats.conn.RequestMsg(&nats.Msg{
-		Subject: opaHttpForNats.Subject,
+	res, err := opaNats.conn.RequestMsg(&nats.Msg{
+		Subject: opaNats.Subject,
 		Header: nats.Header{
-			"X-Policies": opaHttpForNats.Policies,
+			"X-Policies": opaNats.Policies,
 		},
 		Data: json,
-	}, opaHttpForNats.OpaHttp.Opa.Timeout)
+	}, opaNats.Opa.Timeout)
 	if err != nil {
 		return false, "", err
 	}
