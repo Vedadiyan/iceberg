@@ -111,7 +111,7 @@ func (opaNats *OpaNats) Eval(r *http.Request, rv netio.RouteValues) (bool, strin
 		"method":  r.Method,
 		"data":    body,
 	}
-	json, err := json.Marshal(data)
+	inputs, err := json.Marshal(data)
 	if err != nil {
 		return false, "", err
 	}
@@ -120,7 +120,7 @@ func (opaNats *OpaNats) Eval(r *http.Request, rv netio.RouteValues) (bool, strin
 		Header: nats.Header{
 			"X-Policies": opaNats.Policies,
 		},
-		Data: json,
+		Data: inputs,
 	}, opaNats.Opa.Timeout)
 	if err != nil {
 		return false, "", err
@@ -129,7 +129,33 @@ func (opaNats *OpaNats) Eval(r *http.Request, rv netio.RouteValues) (bool, strin
 	if status != "200" {
 		return false, res.Header.Get("X-Error"), nil
 	}
-	return true, "", nil
+	mapper := make(map[string]any)
+	err = json.Unmarshal(res.Data, &mapper)
+	if err != nil {
+		return false, "", err
+	}
+	pass := true
+	for _, value := range mapper {
+		val, ok := value.(map[string]map[string]any)
+		if !ok {
+			pass = false
+			continue
+		}
+		for _, value := range val {
+			val, ok := value["result"]
+			if !ok {
+				pass = false
+			}
+			valBool, ok := val.(bool)
+			if !ok {
+				continue
+			}
+			if !valBool {
+				pass = false
+			}
+		}
+	}
+	return pass, string(res.Data), nil
 }
 
 func (opaNats *OpaNats) Call(ctc context.Context, rv netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
