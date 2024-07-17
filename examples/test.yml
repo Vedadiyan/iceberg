@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+metadata:
+  # must be a unique name to identify the app
+  name: test
+spec:
+  # endpoint to which Icebreg must listen to 
+  listen: ':8080'
+  # the sequence of proxies to internal services
+  resources:
+    # proxy identifier 
+    main-api:
+      # the url through which Icerberg must serve the proxy
+      # supports standard template: /api/v1/:route_param
+      frontend: '/api/v1/:user_id'
+      # the base url to which the request must be proxied
+      backend: 'https://google.com'
+      # values:
+      #   head
+      #   get
+      #   post
+      #   put
+      #   patch
+      #   delete
+      method: 'get'
+      # built-in middleware
+      use:
+        opa: 
+          # Iceberg requires it's own OPA Agent 
+          agent: 'nats://127.0.0.1:4222/$OPA_AGENT'
+          # invokes before any filter on http connect
+          http: 
+            # policy types:
+            #   local:  must come from an environment variable with the same name 
+            #   remote: must be already available to the agent
+            - test-policy: local

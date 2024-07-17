@@ -13,8 +13,22 @@ import (
 	"github.com/vedadiyan/iceberg/internal/common/netio"
 )
 
+const test = `
+package example
+
+import rego.v1
+
+# METADATA
+# title: test
+allow if {
+	true
+}
+`
+
 func main() {
-	data, err := os.ReadFile("../examples/fullspecs.yml")
+	os.Setenv("test-policy", test)
+
+	data, err := os.ReadFile("../examples/test.yml")
 	if err != nil {
 		log.Fatalln(err)
 	}

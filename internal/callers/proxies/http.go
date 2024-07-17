@@ -85,11 +85,13 @@ func (f *HttpProxy) Handle(w http.ResponseWriter, r *http.Request, rv netio.Rout
 	in, err := netio.NewShadowRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	in.RouteValues = rv
 	out, _err := netio.Cascade(in, f.Callers...)
 	if _err != nil {
 		http.Error(w, _err.Message(), _err.Status())
+		return
 	}
 	out.Write(w)
 }

@@ -39,7 +39,7 @@ func Parse(in []byte) (Version, *Metadata, any, error) {
 
 func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string, string, []netio.Caller, ...bootstrap.RegistrationOptions)) error {
 	for _, value := range resourcesV1 {
-		url, err := url.Parse(value.Frontend)
+		url, err := url.Parse(value.Backend)
 		if err != nil {
 			return nil
 		}
@@ -63,7 +63,7 @@ func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string
 		if value.Use.Cors != nil {
 			opts = append(opts, bootstrap.WithCORSDisabled())
 		}
-		handleFunc(url, value.Backend, value.Method, callers, opts...)
+		handleFunc(url, value.Frontend, value.Method, callers, opts...)
 	}
 	return nil
 }

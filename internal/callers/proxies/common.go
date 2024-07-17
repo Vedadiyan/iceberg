@@ -25,6 +25,7 @@ func NewProxy(address *url.URL, callers []netio.Caller) (Handler, error) {
 	proxy := new(Proxy)
 	proxy.Address = address
 	proxy.Callers = callers
+	return NewHttpProxy(proxy), nil
 	switch proxy.Address.Scheme {
 	case "http", "https":
 		{
