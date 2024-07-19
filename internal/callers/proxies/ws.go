@@ -45,6 +45,28 @@ func NewWebSocket(p *Proxy) *WebSocketProxy {
 			}
 		case netio.LEVEL_RESPONSE:
 			{
+				requestUpdaters := make([]netio.RequestUpdater, 0)
+				for _, updater := range caller.GetResponseUpdaters() {
+					fn := func(r *netio.ShadowRequest, httpR *http.Request) error {
+						res, err := netio.NewShandowResponse(&http.Response{
+							Header:  r.Header.Clone(),
+							Body:    r.Body,
+							Trailer: r.Trailer.Clone(),
+						})
+						if err != nil {
+							return err
+						}
+						httpRes := http.Response{
+							Header:  httpR.Header.Clone(),
+							Body:    httpR.Body,
+							Trailer: httpR.Trailer.Clone(),
+						}
+						return updater(res, &httpRes)
+					}
+					requestUpdaters = append(requestUpdaters, fn)
+				}
+				caller.OverrideRequestUpdaters(append(caller.GetRequestUpdaters(), requestUpdaters...))
+				caller.OverrideResponseUpdaters(nil)
 				webSocketProxy.ResponseCallers = append(webSocketProxy.ResponseCallers, caller)
 			}
 		}
@@ -149,6 +171,7 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 			if err != nil {
 				continue
 			}
+
 			_, _err := netio.Cascade(req, inProxy.ResponseCallers...)
 			if _err != nil {
 				continue

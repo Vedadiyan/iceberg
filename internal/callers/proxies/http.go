@@ -37,6 +37,14 @@ func (f *HttpProxy) GetResponseUpdaters() []netio.ResponseUpdater {
 	return f.ResponseUpdaters
 }
 
+func (f *HttpProxy) OverrideRequestUpdaters([]netio.RequestUpdater) {
+
+}
+
+func (f *HttpProxy) OverrideResponseUpdaters([]netio.ResponseUpdater) {
+
+}
+
 func (f *HttpProxy) GetName() string {
 	return f.Name
 }

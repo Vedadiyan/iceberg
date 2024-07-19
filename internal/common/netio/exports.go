@@ -28,6 +28,8 @@ type (
 		Call(context.Context, RouteValues, Cloner, Cloner) (Next, *http.Response, Error)
 		GetRequestUpdaters() []RequestUpdater
 		GetResponseUpdaters() []ResponseUpdater
+		OverrideRequestUpdaters([]RequestUpdater)
+		OverrideResponseUpdaters([]ResponseUpdater)
 		GetContext() context.Context
 	}
 	httpError struct {

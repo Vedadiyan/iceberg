@@ -71,6 +71,14 @@ func (opa *Opa) GetResponseUpdaters() []netio.ResponseUpdater {
 	return nil
 }
 
+func (opa *Opa) OverrideRequestUpdaters([]netio.RequestUpdater) {
+
+}
+
+func (opa *Opa) OverrideResponseUpdaters([]netio.ResponseUpdater) {
+
+}
+
 func (opa *Opa) GetContext() context.Context {
 	return context.TODO()
 }

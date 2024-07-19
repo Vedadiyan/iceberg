@@ -96,6 +96,14 @@ func (c *Cache) GetResponseUpdaters() []netio.ResponseUpdater {
 	return nil
 }
 
+func (c *Cache) OverrideRequestUpdaters([]netio.RequestUpdater) {
+
+}
+
+func (c *Cache) OverrideResponseUpdaters([]netio.ResponseUpdater) {
+
+}
+
 func (c *Cache) GetName() string {
 	return "Cache"
 }
