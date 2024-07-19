@@ -49,17 +49,17 @@ func NewWebSocket(p *Proxy) *WebSocketProxy {
 				for _, updater := range caller.GetResponseUpdaters() {
 					fn := func(r *netio.ShadowRequest, httpR *http.Request) error {
 						res, err := netio.NewShandowResponse(&http.Response{
-							Header:  r.Header.Clone(),
+							Header:  r.Header,
 							Body:    r.Body,
-							Trailer: r.Trailer.Clone(),
+							Trailer: r.Trailer,
 						})
 						if err != nil {
 							return err
 						}
 						httpRes := http.Response{
-							Header:  httpR.Header.Clone(),
+							Header:  httpR.Header,
 							Body:    httpR.Body,
-							Trailer: httpR.Trailer.Clone(),
+							Trailer: httpR.Trailer,
 						}
 						return updater(res, &httpRes)
 					}
