@@ -126,7 +126,12 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 
 	inProxy.Address.Path = r.URL.Path
 
-	out, _, err := websocket.DefaultDialer.Dial(inProxy.Address.String(), nil)
+	handler := func() (*websocket.Conn, error) {
+		out, _, err := websocket.DefaultDialer.Dial(inProxy.Address.String(), nil)
+		return out, err
+	}
+
+	out, err := handler()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -153,7 +158,18 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 			if err != nil {
 				continue
 			}
-			out.WriteMessage(websocket.TextMessage, message)
+			for {
+				err = out.WriteMessage(websocket.TextMessage, message)
+				if err == nil {
+					break
+				}
+				o, err := handler()
+				if err == nil {
+					out = o
+					break
+				}
+				<-time.After(time.Second * 5)
+			}
 		}
 	}()
 
@@ -161,7 +177,12 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 		for {
 			_, message, err := out.ReadMessage()
 			if err != nil {
-				break
+				<-time.After(time.Second * 5)
+				o, err := handler()
+				if err == nil {
+					out = o
+				}
+				continue
 			}
 			httpReq, err := http.NewRequest("*", "", bytes.NewBuffer(message))
 			if err != nil {
