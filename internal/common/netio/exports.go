@@ -147,7 +147,9 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 		}
 		in.Reset()
 	}
-	out.Reset()
+	if out != nil {
+		out.Reset()
+	}
 	return out, nil
 }
 

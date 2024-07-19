@@ -11,9 +11,9 @@ spec:
     main-api:
       # the url through which Icerberg must serve the proxy
       # supports standard template: /api/v1/:route_param
-      frontend: '/api/v1/:user_id'
+      frontend: '/chat/:user_id/:group_id'
       # the base url to which the request must be proxied
-      backend: 'https://google.com'
+      backend: 'ws://127.0.0.1:8081'
       # values:
       #   head
       #   get

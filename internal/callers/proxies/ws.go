@@ -163,24 +163,29 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+
 	inProxy.ws = in
+	inProxy.Address.Path = r.URL.Path
 	inProxy.listening = true
-	out, _, err := websocket.DefaultDialer.Dial(inProxy.Address.String(), r.Header)
+
+	out, _, err := websocket.DefaultDialer.Dial(inProxy.Address.String(), nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	inReader := NewWebSocketReaderProxy(inProxy)
-	inWriter := NewWebSocketWriterProxy(inProxy)
 
-	outProxy := &WebSocketProxy{
-		ws:        out,
-		listening: true,
-	}
+	outProxy := NewWebSocket(&Proxy{})
+	outProxy.ws = out
+	outProxy.listening = true
+
 	in.SetCloseHandler(func(code int, text string) error {
 		inProxy.listening = false
 		outProxy.listening = false
 		return nil
 	})
+
+	inReader := NewWebSocketReaderProxy(inProxy)
+	inWriter := NewWebSocketWriterProxy(inProxy)
+
 	outReader := NewWebSocketReaderProxy(outProxy)
 	outWriter := NewWebSocketWriterProxy(outProxy)
 
@@ -192,12 +197,38 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 
 	go func() {
 		for inProxy.listening {
-			_, _ = netio.Cascade(req, inReader.Callers...)
+			_, message, err := inProxy.ws.ReadMessage()
+			if err != nil {
+				break
+			}
+			httpReq, err := http.NewRequest("*", "", bytes.NewBuffer(message))
+			if err != nil {
+				continue
+			}
+			req, err := netio.NewShadowRequest(httpReq)
+			if err != nil {
+				continue
+			}
+			_ = req
+			outProxy.ws.WriteMessage(websocket.TextMessage, message)
 		}
 	}()
 	go func() {
 		for outProxy.listening {
-			_, _ = netio.Cascade(req, outReader.Callers...)
+			_, message, err := outProxy.ws.ReadMessage()
+			if err != nil {
+				break
+			}
+			httpReq, err := http.NewRequest("*", "", bytes.NewBuffer(message))
+			if err != nil {
+				continue
+			}
+			req, err := netio.NewShadowRequest(httpReq)
+			if err != nil {
+				continue
+			}
+			_ = req
+			inProxy.ws.WriteMessage(websocket.TextMessage, message)
 		}
 	}()
 }

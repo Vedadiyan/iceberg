@@ -136,12 +136,16 @@ func (opaNats *OpaNats) Eval(r *http.Request, rv netio.RouteValues) (bool, strin
 	}
 	pass := true
 	for _, value := range mapper {
-		val, ok := value.(map[string]map[string]any)
+		val, ok := value.(map[string]any)
 		if !ok {
 			pass = false
 			continue
 		}
 		for _, value := range val {
+			value, ok := value.(map[string]any)
+			if !ok {
+				pass = false
+			}
 			val, ok := value["result"]
 			if !ok {
 				pass = false
@@ -161,14 +165,14 @@ func (opaNats *OpaNats) Eval(r *http.Request, rv netio.RouteValues) (bool, strin
 func (opaNats *OpaNats) Call(ctc context.Context, rv netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
 	r, err := c()
 	if err != nil {
-		return false, nil, netio.NewError(err.Error(), 500)
+		return true, nil, netio.NewError(err.Error(), 500)
 	}
 	res, msg, err := opaNats.Eval(r, rv)
 	if err != nil {
-		return false, nil, netio.NewError(err.Error(), 500)
+		return true, nil, netio.NewError(err.Error(), 500)
 	}
 	if !res {
-		return false, nil, netio.NewError(msg, 400)
+		return true, nil, netio.NewError(msg, 400)
 	}
-	return true, nil, nil
+	return false, nil, nil
 }
