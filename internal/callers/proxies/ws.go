@@ -180,7 +180,7 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 			if err != nil {
 				continue
 			}
-			out.WriteMessage(websocket.TextMessage, message)
+			in.WriteMessage(websocket.TextMessage, message)
 		}
 	}()
 }
