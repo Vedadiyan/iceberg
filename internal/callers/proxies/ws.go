@@ -123,15 +123,13 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 			if err != nil {
 				continue
 			}
-			res, _err := netio.Cascade(req, inProxy.RequestCallers...)
+			_, _err := netio.Cascade(req, inProxy.RequestCallers...)
 			if _err != nil {
 				continue
 			}
-			if res != nil {
-				message, err = io.ReadAll(res.Body)
-				if err != nil {
-					continue
-				}
+			message, err = io.ReadAll(req.Body)
+			if err != nil {
+				continue
 			}
 			out.WriteMessage(websocket.TextMessage, message)
 		}
@@ -151,17 +149,15 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 			if err != nil {
 				continue
 			}
-			res, _err := netio.Cascade(req, inProxy.RequestCallers...)
+			_, _err := netio.Cascade(req, inProxy.ResponseCallers...)
 			if _err != nil {
 				continue
 			}
-			if res != nil {
-				message, err = io.ReadAll(res.Body)
-				if err != nil {
-					continue
-				}
+			message, err = io.ReadAll(req.Body)
+			if err != nil {
+				continue
 			}
-			in.WriteMessage(websocket.TextMessage, message)
+			out.WriteMessage(websocket.TextMessage, message)
 		}
 	}()
 }
