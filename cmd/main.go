@@ -18,10 +18,12 @@ package example
 
 import rego.v1
 
+default allow := false
+
 # METADATA
 # title: test
 allow if {
-	true
+	1 == 2
 }
 `
 

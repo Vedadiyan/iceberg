@@ -3,10 +3,8 @@ package proxies
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -16,21 +14,9 @@ import (
 type (
 	WebSocketProxy struct {
 		*Proxy
-		ConnectCallers []netio.Caller
-
-		ws *websocket.Conn
-
-		listening bool
-	}
-
-	WebSocketReaderProxy struct {
-		*WebSocketProxy
-		Callers []netio.Caller
-	}
-
-	WebSocketWriterProxy struct {
-		*WebSocketProxy
-		Callers []netio.Caller
+		ConnectCallers  []netio.Caller
+		RequestCallers  []netio.Caller
+		ResponseCallers []netio.Caller
 	}
 )
 
@@ -45,36 +31,25 @@ func NewWebSocket(p *Proxy) *WebSocketProxy {
 	webSocketProxy := new(WebSocketProxy)
 	webSocketProxy.Proxy = p
 	webSocketProxy.ConnectCallers = make([]netio.Caller, 0)
+	webSocketProxy.RequestCallers = make([]netio.Caller, 0)
+	webSocketProxy.ResponseCallers = make([]netio.Caller, 0)
 	for _, caller := range p.Callers {
-		if caller.GetLevel() == netio.LEVEL_CONNECT {
-			webSocketProxy.ConnectCallers = append(webSocketProxy.ConnectCallers, caller)
+		switch caller.GetLevel() {
+		case netio.LEVEL_CONNECT:
+			{
+				webSocketProxy.ConnectCallers = append(webSocketProxy.ConnectCallers, caller)
+			}
+		case netio.LEVEL_REQUEST:
+			{
+				webSocketProxy.RequestCallers = append(webSocketProxy.RequestCallers, caller)
+			}
+		case netio.LEVEL_RESPONSE:
+			{
+				webSocketProxy.ResponseCallers = append(webSocketProxy.ResponseCallers, caller)
+			}
 		}
 	}
 	return webSocketProxy
-}
-
-func NewWebSocketReaderProxy(webSocketProxy *WebSocketProxy) *WebSocketReaderProxy {
-	webSocketReaderProxy := new(WebSocketReaderProxy)
-	webSocketReaderProxy.WebSocketProxy = webSocketProxy
-	webSocketReaderProxy.Callers = make([]netio.Caller, 0)
-	for _, caller := range webSocketProxy.Callers {
-		if caller.GetLevel() == netio.LEVEL_REQUEST {
-			webSocketReaderProxy.Callers = append(webSocketReaderProxy.Callers, caller)
-		}
-	}
-	return webSocketReaderProxy
-}
-
-func NewWebSocketWriterProxy(webSocketProxy *WebSocketProxy) *WebSocketWriterProxy {
-	webSocketWriterProxy := new(WebSocketWriterProxy)
-	webSocketWriterProxy.WebSocketProxy = webSocketProxy
-	webSocketWriterProxy.Callers = make([]netio.Caller, 0)
-	for _, caller := range webSocketProxy.Callers {
-		if caller.GetLevel() == netio.LEVEL_RESPONSE {
-			webSocketWriterProxy.Callers = append(webSocketWriterProxy.Callers, caller)
-		}
-	}
-	return webSocketWriterProxy
 }
 
 func (f *WebSocketProxy) GetRequestUpdaters() []netio.RequestUpdater {
@@ -113,43 +88,6 @@ func (f *WebSocketProxy) GetLevel() netio.Level {
 	return netio.LEVEL_NONE
 }
 
-func (f *WebSocketReaderProxy) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
-	t, sock, err := f.ws.NextReader()
-	if err != nil {
-		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
-	}
-	data, err := io.ReadAll(sock)
-	if err != nil {
-		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
-	}
-	res := new(http.Response)
-	res.Body = io.NopCloser(bytes.NewReader(data))
-	res.Header = http.Header{
-		"Message-Type": []string{fmt.Sprintf("%d", t)},
-	}
-	return netio.TERM, res, nil
-}
-
-func (f *WebSocketWriterProxy) Call(ctx context.Context, _ netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
-	r, err := c()
-	if err != nil {
-		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
-	}
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
-	}
-	t, err := strconv.Atoi(r.Header.Get("Message-Type"))
-	if err != nil {
-		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
-	}
-	err = f.ws.WriteMessage(t, data)
-	if err != nil {
-		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
-	}
-	return netio.TERM, nil, nil
-}
-
 func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv netio.RouteValues) {
 	req, err := netio.NewShadowRequest(r)
 	if err != nil {
@@ -164,40 +102,16 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	inProxy.ws = in
 	inProxy.Address.Path = r.URL.Path
-	inProxy.listening = true
 
 	out, _, err := websocket.DefaultDialer.Dial(inProxy.Address.String(), nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	outProxy := NewWebSocket(&Proxy{})
-	outProxy.ws = out
-	outProxy.listening = true
-
-	in.SetCloseHandler(func(code int, text string) error {
-		inProxy.listening = false
-		outProxy.listening = false
-		return nil
-	})
-
-	inReader := NewWebSocketReaderProxy(inProxy)
-	inWriter := NewWebSocketWriterProxy(inProxy)
-
-	outReader := NewWebSocketReaderProxy(outProxy)
-	outWriter := NewWebSocketWriterProxy(outProxy)
-
-	inReader.Callers = append([]netio.Caller{inReader}, inReader.Callers...)
-	inReader.Callers = append(inReader.Callers, outWriter)
-
-	outReader.Callers = append([]netio.Caller{outReader}, inWriter.Callers...)
-	outReader.Callers = append(outReader.Callers, inWriter)
-
 	go func() {
-		for inProxy.listening {
-			_, message, err := inProxy.ws.ReadMessage()
+		for {
+			_, message, err := in.ReadMessage()
 			if err != nil {
 				break
 			}
@@ -209,13 +123,22 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 			if err != nil {
 				continue
 			}
-			_ = req
-			outProxy.ws.WriteMessage(websocket.TextMessage, message)
+			if len(inProxy.RequestCallers) != 0 {
+				res, _err := netio.Cascade(req, inProxy.RequestCallers...)
+				if _err != nil {
+					continue
+				}
+				message, err = io.ReadAll(res.Body)
+				if err != nil {
+					continue
+				}
+			}
+			out.WriteMessage(websocket.TextMessage, message)
 		}
 	}()
 	go func() {
-		for outProxy.listening {
-			_, message, err := outProxy.ws.ReadMessage()
+		for {
+			_, message, err := out.ReadMessage()
 			if err != nil {
 				break
 			}
@@ -227,8 +150,17 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 			if err != nil {
 				continue
 			}
-			_ = req
-			inProxy.ws.WriteMessage(websocket.TextMessage, message)
+			if len(inProxy.ResponseCallers) != 0 {
+				res, _err := netio.Cascade(req, inProxy.RequestCallers...)
+				if _err != nil {
+					continue
+				}
+				message, err = io.ReadAll(res.Body)
+				if err != nil {
+					continue
+				}
+			}
+			in.WriteMessage(websocket.TextMessage, message)
 		}
 	}()
 }
