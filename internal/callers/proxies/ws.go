@@ -123,11 +123,11 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 			if err != nil {
 				continue
 			}
-			if len(inProxy.RequestCallers) != 0 {
-				res, _err := netio.Cascade(req, inProxy.RequestCallers...)
-				if _err != nil {
-					continue
-				}
+			res, _err := netio.Cascade(req, inProxy.RequestCallers...)
+			if _err != nil {
+				continue
+			}
+			if res != nil {
 				message, err = io.ReadAll(res.Body)
 				if err != nil {
 					continue
@@ -136,6 +136,7 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 			out.WriteMessage(websocket.TextMessage, message)
 		}
 	}()
+
 	go func() {
 		for {
 			_, message, err := out.ReadMessage()
@@ -150,11 +151,11 @@ func (inProxy *WebSocketProxy) Handle(w http.ResponseWriter, r *http.Request, rv
 			if err != nil {
 				continue
 			}
-			if len(inProxy.ResponseCallers) != 0 {
-				res, _err := netio.Cascade(req, inProxy.RequestCallers...)
-				if _err != nil {
-					continue
-				}
+			res, _err := netio.Cascade(req, inProxy.RequestCallers...)
+			if _err != nil {
+				continue
+			}
+			if res != nil {
 				message, err = io.ReadAll(res.Body)
 				if err != nil {
 					continue

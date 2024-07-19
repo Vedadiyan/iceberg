@@ -23,7 +23,7 @@ default allow := false
 # METADATA
 # title: test
 allow if {
-	1 == 2
+	1 == 1
 }
 `
 
