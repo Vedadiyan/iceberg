@@ -3,9 +3,11 @@ package netio
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type (
@@ -19,10 +21,15 @@ type (
 	RequestUpdater func(*ShadowRequest, *http.Request) error
 )
 
-func WithUrl(url *url.URL) RequestOption {
+func WithUrl(url *url.URL, rv map[string]string) RequestOption {
 	return func(r *http.Request) {
+		path := url.Path
+		for key, value := range rv {
+			path = strings.ReplaceAll(path, fmt.Sprintf("{%s}", key), value)
+		}
 		(*r).URL.Host = url.Host
 		(*r).URL.Scheme = url.Scheme
+		(*r).URL.Path = path
 		(*r).Host = url.Host
 	}
 }

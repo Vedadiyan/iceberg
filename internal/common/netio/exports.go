@@ -108,6 +108,7 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 	tasks := make(map[string]<-chan *Response)
 	ctx := make(map[string]context.Context)
 	or, err := in.CloneShadowRequest()
+	or.RouteValues = in.RouteValues
 	if err != nil {
 		return nil, NewError(err.Error(), http.StatusInternalServerError)
 	}
