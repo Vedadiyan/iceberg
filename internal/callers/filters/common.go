@@ -43,6 +43,14 @@ func (f *Filter) GetResponseUpdaters() []netio.ResponseUpdater {
 	return f.ResponseUpdaters
 }
 
+func (f *Filter) OverrideRequestUpdaters(requestUpdaters []netio.RequestUpdater) {
+	f.RequestUpdaters = requestUpdaters
+}
+
+func (f *Filter) OverrideResponseUpdaters(responseUpdaters []netio.ResponseUpdater) {
+	f.ResponseUpdaters = responseUpdaters
+}
+
 func (f *Filter) GetName() string {
 	return f.Name
 }

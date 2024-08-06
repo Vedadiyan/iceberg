@@ -28,6 +28,8 @@ type (
 		Call(context.Context, RouteValues, Cloner, Cloner) (Next, *http.Response, Error)
 		GetRequestUpdaters() []RequestUpdater
 		GetResponseUpdaters() []ResponseUpdater
+		OverrideRequestUpdaters([]RequestUpdater)
+		OverrideResponseUpdaters([]ResponseUpdater)
 		GetContext() context.Context
 	}
 	httpError struct {
@@ -147,7 +149,9 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 		}
 		in.Reset()
 	}
-	out.Reset()
+	if out != nil {
+		out.Reset()
+	}
 	return out, nil
 }
 

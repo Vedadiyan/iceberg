@@ -37,6 +37,14 @@ func (f *HttpProxy) GetResponseUpdaters() []netio.ResponseUpdater {
 	return f.ResponseUpdaters
 }
 
+func (f *HttpProxy) OverrideRequestUpdaters([]netio.RequestUpdater) {
+
+}
+
+func (f *HttpProxy) OverrideResponseUpdaters([]netio.ResponseUpdater) {
+
+}
+
 func (f *HttpProxy) GetName() string {
 	return f.Name
 }
@@ -85,11 +93,13 @@ func (f *HttpProxy) Handle(w http.ResponseWriter, r *http.Request, rv netio.Rout
 	in, err := netio.NewShadowRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 	in.RouteValues = rv
 	out, _err := netio.Cascade(in, f.Callers...)
 	if _err != nil {
 		http.Error(w, _err.Message(), _err.Status())
+		return
 	}
 	out.Write(w)
 }

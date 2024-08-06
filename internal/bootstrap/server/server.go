@@ -5,23 +5,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/vedadiyan/iceberg/internal/bootstrap"
 	"github.com/vedadiyan/iceberg/internal/common/router"
-)
-
-type (
-	RouteValues         = router.RouteValues
-	RegistrationOptions func(*Options, *router.RouteTable, *url.URL, func(w http.ResponseWriter, r *http.Request, rv RouteValues))
-	Options             struct {
-		cors          bool
-		exposeHeaders string
-	}
-	CORS struct {
-		AllowedOrigins string
-		AllowedHeaders string
-		AllowedMethods string
-		MaxAge         string
-		ExposedHeaders string
-	}
 )
 
 var (
@@ -40,61 +25,33 @@ func init() {
 	})
 }
 
-func WithCORSDisabled() RegistrationOptions {
-	return func(opt *Options, rt *router.RouteTable, u *url.URL, f func(w http.ResponseWriter, r *http.Request, rv RouteValues)) {
-		opt.cors = true
-		opt.exposeHeaders = "*"
-		rt.Register(u, "OPTIONS", func(w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
-			w.Header().Add("access-control-allow-origin", "*")
-			w.Header().Add("access-control-allow-headers", "*")
-			w.Header().Add("access-control-max-age", "3628800")
-			w.Header().Add("access-control-allow-methods", "GET, DELETE, OPTIONS, POST, PUT")
-			w.WriteHeader(200)
-		})
-	}
-}
-
-func WithCORS(cors *CORS) RegistrationOptions {
-	return func(opt *Options, rt *router.RouteTable, u *url.URL, f func(w http.ResponseWriter, r *http.Request, rv RouteValues)) {
-		opt.cors = true
-		opt.exposeHeaders = cors.ExposedHeaders
-		rt.Register(u, "OPTIONS", func(w http.ResponseWriter, r *http.Request, rv router.RouteValues) {
-			w.Header().Add("access-control-allow-origin", cors.AllowedOrigins)
-			w.Header().Add("access-control-allow-headers", cors.AllowedHeaders)
-			w.Header().Add("access-control-max-age", cors.MaxAge)
-			w.Header().Add("access-control-allow-methods", cors.AllowedMethods)
-			w.WriteHeader(200)
-		})
-	}
-}
-
-func HandleFunc(pattern string, method string, handler func(w http.ResponseWriter, r *http.Request, rv RouteValues), options ...RegistrationOptions) error {
+func HandleFunc(pattern string, method string, handler func(w http.ResponseWriter, r *http.Request, rv bootstrap.RouteValues), options ...bootstrap.RegistrationOptions) error {
 	url, err := url.Parse(pattern)
 	if err != nil {
 		return err
 	}
-	var opt Options
+	var opt bootstrap.Options
 	for _, option := range options {
 		option(&opt, router.DefaultRouteTable(), url, handler)
 	}
 	if len(method) == 0 {
 		method = "*"
 	}
-	handler = func(w http.ResponseWriter, r *http.Request, rv RouteValues) {
-		if opt.cors && len(opt.exposeHeaders) != 0 {
-			w.Header().Add("Access-Control-Expose-Headers", opt.exposeHeaders)
+	handler2 := func(w http.ResponseWriter, r *http.Request, rv bootstrap.RouteValues) {
+		if opt.Cors && len(opt.ExposeHeaders) != 0 {
+			w.Header().Add("Access-Control-Expose-Headers", opt.ExposeHeaders)
 		}
 		handler(w, r, rv)
 	}
 	if method == "*" {
-		router.DefaultRouteTable().Register(url, "GET", handler)
-		router.DefaultRouteTable().Register(url, "HEAD", handler)
-		router.DefaultRouteTable().Register(url, "POST", handler)
-		router.DefaultRouteTable().Register(url, "PUT", handler)
-		router.DefaultRouteTable().Register(url, "DELETE", handler)
+		router.DefaultRouteTable().Register(url, "GET", handler2)
+		router.DefaultRouteTable().Register(url, "HEAD", handler2)
+		router.DefaultRouteTable().Register(url, "POST", handler2)
+		router.DefaultRouteTable().Register(url, "PUT", handler2)
+		router.DefaultRouteTable().Register(url, "DELETE", handler2)
 		return nil
 	}
-	router.DefaultRouteTable().Register(url, method, handler)
+	router.DefaultRouteTable().Register(url, method, handler2)
 	return nil
 }
 
