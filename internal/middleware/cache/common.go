@@ -64,12 +64,12 @@ func Unmarshal(data []byte) (*http.Response, error) {
 func (c *Cache) ParseKey(r *http.Request, rv netio.RouteValues) (string, error) {
 	cacheKey := strings.ToLower(c.KeyTemplate)
 	for key, value := range rv {
-		cacheKey = strings.ReplaceAll(cacheKey, fmt.Sprintf("${:%s}", strings.ToLower(key)), value)
+		cacheKey = strings.ReplaceAll(cacheKey, fmt.Sprintf("{:%s}", strings.ToLower(key)), value)
 	}
 	for key, value := range r.URL.Query() {
-		cacheKey = strings.ReplaceAll(cacheKey, fmt.Sprintf("${?%s}", strings.ToLower(key)), strings.Join(value, "-"))
+		cacheKey = strings.ReplaceAll(cacheKey, fmt.Sprintf("{?%s}", strings.ToLower(key)), strings.Join(value, "-"))
 	}
-	if strings.Contains(cacheKey, "${body}") {
+	if strings.Contains(cacheKey, "{body}") {
 		data, err := io.ReadAll(r.Body)
 		if err != nil {
 			return "", err
@@ -80,10 +80,10 @@ func (c *Cache) ParseKey(r *http.Request, rv netio.RouteValues) (string, error) 
 			return "", err
 		}
 		hash := sha256.Sum(nil)
-		cacheKey = strings.ReplaceAll(cacheKey, "${body}", hex.EncodeToString(hash))
+		cacheKey = strings.ReplaceAll(cacheKey, "{body}", hex.EncodeToString(hash))
 	}
-	if strings.Contains(cacheKey, "${method}") {
-		cacheKey = strings.ReplaceAll(cacheKey, "${body}", r.Method)
+	if strings.Contains(cacheKey, "{method}") {
+		cacheKey = strings.ReplaceAll(cacheKey, "{body}", r.Method)
 	}
 	return cacheKey, nil
 }

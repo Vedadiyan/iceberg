@@ -36,7 +36,7 @@ spec:
           #   ${body}:                creates the hash of the request body
           #   ${method}:              captures the request method
           #   ${[HEADER_NAME]}:       captures a header 
-          key: 'test_${:route_value}_${?query_param}_${body}_${method}'
+          key: 'test_{:route_value}_{?query_param}_{body}_{method}'
         # cors policy definition
         #   default:   disables cors
         #   custom:    
