@@ -60,11 +60,11 @@ type (
 		Receive []any `yaml:"receive"`
 	}
 	LogV1 struct {
-		Agent     string     `yaml:"agent"`
-		LogLevel  string     `yaml:"logLevel"`
-		Batch     LogBatchV1 `yaml:"batch"`
-		Fallbacks []string   `yaml:"fallbacks"`
-		Retry     LogRetryV1 `yaml:"retry"`
+		Agent     string      `yaml:"agent"`
+		LogLevel  string      `yaml:"logLevel"`
+		Batch     *LogBatchV1 `yaml:"batch"`
+		Fallbacks []string    `yaml:"fallbacks"`
+		Retry     *LogRetryV1 `yaml:"retry"`
 	}
 	LogBatchV1 struct {
 		MinBufferSize int    `yaml:"minBufferSize"`
