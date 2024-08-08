@@ -64,6 +64,31 @@ spec:
             # invokes before any filter on a receive message event
             receieve:
               - another-ws-policy: remote
+        # log middleware specification
+        log:
+          # currently only Grafana Loki is supported
+          agent: 'loki://[default-loki]'
+          # minimum log level
+          logLevel: info
+          # batch configuration
+          batch:
+            # sync when the buffer reaches a minimum capacity
+            minBufferSize: 100
+            # sync every x seconds/minutes/etc. 
+            interval: 10s
+          # fallbacks if the Loki server fails
+          # values:
+          #   file
+          #   console
+          fallbacks:
+            - file 
+            - console
+          # retry policy for syncing logs
+          retry:
+            # maximum number of retries
+            max: 5
+            # pause period between retries
+            pause: 1s
       # a sequence of external middleware to control/re-write/shape traffic 
       filters:
         - name: request-log
