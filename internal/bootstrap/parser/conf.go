@@ -43,6 +43,7 @@ type (
 		Cache *CacheV1 `yaml:"cache"`
 		Cors  *string  `yaml:"cors"`
 		OPA   *OpaV1   `yaml:"opa"`
+		Log   *LogV1   `yaml:"log"`
 	}
 	CacheV1 struct {
 		Addr string `yaml:"addr"`
