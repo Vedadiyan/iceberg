@@ -67,12 +67,12 @@ type (
 		Retry     *LogRetryV1 `yaml:"retry"`
 	}
 	LogBatchV1 struct {
-		MinBufferSize int    `yaml:"minBufferSize"`
-		Interval      string `yaml:"interval"`
+		MinBufferSize *int    `yaml:"minBufferSize"`
+		Interval      *string `yaml:"interval"`
 	}
 	LogRetryV1 struct {
-		Max   int    `yaml:"max"`
-		Pause string `yaml:"pause"`
+		Max   *int    `yaml:"max"`
+		Pause *string `yaml:"pause"`
 	}
 )
 
