@@ -89,6 +89,17 @@ spec:
             max: 5
             # pause period between retries
             pause: 1s
+        rateLimit: 
+          agent: 'nats://[default-nats]/$RATE_LIMITER'
+          config: 
+            static: 
+              # values:
+              #   any header name
+              #   $RemoteIP
+              key: X-Forwarded-For
+              max: 100
+              period: 1m
+            dynamic: 'nats://[default-nats]/$RATE_LIMIT_POOL'
       # a sequence of external middleware to control/re-write/shape traffic 
       filters:
         - name: request-log
