@@ -17,6 +17,7 @@ type (
 		RouteValues netio.RouteValues
 		Scope       string
 		Error       error
+		Params      map[string]string
 	}
 	Loggable struct {
 		instance netio.Caller
