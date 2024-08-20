@@ -2,6 +2,7 @@ package netio
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -17,6 +18,7 @@ type (
 		Error
 	}
 	Error interface {
+		error
 		Message() string
 		Status() int
 	}
@@ -49,6 +51,10 @@ const (
 	LEVEL_RESPONSE Level = 16
 	LEVEL_POST     Level = 32
 )
+
+func (e *httpError) Error() string {
+	return fmt.Sprintf("%d: %s", e.status, e.message)
+}
 
 func NewError(message string, status int) Error {
 	return &httpError{

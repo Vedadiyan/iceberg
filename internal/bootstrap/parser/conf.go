@@ -60,11 +60,13 @@ type (
 		Receive []any `yaml:"receive"`
 	}
 	LogV1 struct {
-		Agent     string      `yaml:"agent"`
-		LogLevel  string      `yaml:"logLevel"`
-		Batch     *LogBatchV1 `yaml:"batch"`
-		Fallbacks []string    `yaml:"fallbacks"`
-		Retry     *LogRetryV1 `yaml:"retry"`
+		Agent        string         `yaml:"agent"`
+		LogLevel     string         `yaml:"logLevel"`
+		Batch        *LogBatchV1    `yaml:"batch"`
+		Fallbacks    []string       `yaml:"fallbacks"`
+		Retry        *LogRetryV1    `yaml:"retry"`
+		UserIdentity *string        `yaml:"userIdentity"`
+		Include      *LogTemplateV1 `yaml:"include"`
 	}
 	LogBatchV1 struct {
 		MinBufferSize *int    `yaml:"minBufferSize"`
@@ -73,6 +75,11 @@ type (
 	LogRetryV1 struct {
 		Max   *int    `yaml:"max"`
 		Pause *string `yaml:"pause"`
+	}
+	LogTemplateV1 struct {
+		Log     string `yaml:"log"`
+		Trace   string `yaml:"trace"`
+		Metrics string `yaml:"metrics"`
 	}
 )
 

@@ -13,13 +13,14 @@ import (
 
 type (
 	Filter struct {
-		Name      string
-		Address   *url.URL
-		Level     netio.Level
-		Parallel  bool
-		Timeout   time.Duration
-		Callers   []netio.Caller
-		AwaitList []string
+		Name        string
+		Address     *url.URL
+		Level       netio.Level
+		Parallel    bool
+		Timeout     time.Duration
+		Callers     []netio.Caller
+		AwaitList   []string
+		TermOnError netio.Next
 
 		RequestUpdaters  []netio.RequestUpdater
 		ResponseUpdaters []netio.ResponseUpdater
@@ -121,7 +122,6 @@ func Await(resCh <-chan *netio.ShadowResponse, errCh <-chan error, ctx context.C
 	select {
 	case res := <-resCh:
 		{
-
 			if res.StatusCode > 399 {
 				return netio.TERM, nil, netio.NewError(res.Status, res.StatusCode)
 			}

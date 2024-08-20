@@ -89,17 +89,35 @@ spec:
             max: 5
             # pause period between retries
             pause: 1s
-        rateLimit: 
-          agent: 'nats://[default-nats]/$RATE_LIMITER'
-          config: 
-            static: 
-              # values:
-              #   any header name
-              #   $RemoteIP
-              key: X-Forwarded-For
-              max: 100
-              period: 1m
-            dynamic: 'nats://[default-nats]/$RATE_LIMIT_POOL'
+          template: 
+            log: |
+              {
+                "level": $(level)
+                "timestamp": $(timestamp),
+                "app": $(app),
+                "userId": $(jwt.user_id),
+                "frontend": $(frontend),
+                "backend": $(backend)
+              }
+            trace: |
+              {
+                "headers": $(http.headers),
+                "header": $(http.headers["header"]),
+                "path": $(http.path),
+                "path_param": $(http.path["name"]),
+                "query": $(http.query),
+                "query_param": $(http.query["name"]),
+                "body": $(http.body),
+                "filter": $(filter),
+                "filter_param": $(filter.addr),
+                "func": $(func)
+              }
+            metrics: |
+              {
+                "benchmark": $(benchmark),
+                "memory": $(memory),
+                "cpu": $(cpu)
+              }
       # a sequence of external middleware to control/re-write/shape traffic 
       filters:
         - name: request-log
