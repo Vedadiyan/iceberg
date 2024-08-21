@@ -8,12 +8,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vedadiyan/iceberg/internal/common/logging"
 	"github.com/vedadiyan/iceberg/internal/common/netio"
 )
 
 type (
 	Filter struct {
 		Name        string
+		Parent      string
 		Address     *url.URL
 		Level       netio.Level
 		Parallel    bool
@@ -22,10 +24,14 @@ type (
 		AwaitList   []string
 		TermOnError netio.Next
 
+		Logger string
+
 		RequestUpdaters  []netio.RequestUpdater
 		ResponseUpdaters []netio.ResponseUpdater
 
-		instance netio.Caller
+		instance        netio.Caller
+		metadata        *logging.Metadata
+		tracedataStatis *logging.TracedataStatic
 	}
 )
 
@@ -112,6 +118,19 @@ func (f *Filter) SetExchangeBody() {
 			f.ResponseUpdaters = append(f.ResponseUpdaters, netio.ResReplaceBody())
 		}
 	}
+}
+
+func (f *Filter) Metadata() *logging.Metadata {
+	return f.metadata
+}
+
+func (f *Filter) Tracedata(fn string, h http.Header, rv netio.RouteValues, u *url.URL, b []byte) *logging.Tracedata {
+	t := new(logging.Tracedata)
+	t.TracedataStatic = f.tracedataStatis
+	t.Header = h
+	t.Url = u
+	t.Body = b
+	return t
 }
 
 func (f *Filter) Call(ctx context.Context, rv map[string]string, c netio.Cloner, o netio.Cloner) (netio.Next, *http.Response, netio.Error) {

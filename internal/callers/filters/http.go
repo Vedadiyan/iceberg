@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/vedadiyan/iceberg/internal/common/logging"
 	"github.com/vedadiyan/iceberg/internal/common/netio"
 )
 
@@ -20,11 +21,16 @@ func NewHttpFilter(f *Filter) *HttpFilter {
 	return httpFilter
 }
 
-func (f *HttpFilter) Call(ctx context.Context, rv netio.RouteValues, c netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+func (f *HttpFilter) Call(ctx context.Context, rv netio.RouteValues, c netio.Cloner, _ netio.Cloner) (_n netio.Next, _r *http.Response, _e netio.Error) {
+	l := logging.GetLogger(f.Logger)
+	l.Init(f.Metadata())
+	defer l.Close(_n == netio.TERM, _e)
+
 	r, err := c(netio.WithUrl(f.Address, rv), netio.WithContext(ctx))
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
+	l.Trace(f.Tracedata("Call", r.Header, rv, r.URL, nil))
 	res, err := http.DefaultClient.Do(r)
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusBadGateway)

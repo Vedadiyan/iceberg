@@ -38,7 +38,7 @@ func Parse(in []byte) (Version, *Metadata, any, error) {
 }
 
 func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string, string, []netio.Caller, ...bootstrap.RegistrationOptions)) error {
-	for _, value := range resourcesV1 {
+	for key, value := range resourcesV1 {
 		url, err := url.Parse(value.Backend)
 		if err != nil {
 			return nil
@@ -54,7 +54,7 @@ func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string
 			return err
 		}
 		callers = append(callers, cache...)
-		filters, err := ParseFiltersV1(value.Filters, true)
+		filters, err := ParseFiltersV1(value.Filters, true, key)
 		if err != nil {
 			return nil
 		}
@@ -211,7 +211,7 @@ func ParsePolicy(in []any) (map[string]opa.PolicyType, error) {
 	return policies, nil
 }
 
-func ParseFiltersV1(in []FilterV1, supportsLevel bool) ([]netio.Caller, error) {
+func ParseFiltersV1(in []FilterV1, supportsLevel bool, parent string) ([]netio.Caller, error) {
 	callers := make([]netio.Caller, 0)
 	for _, caller := range in {
 		url, err := url.Parse(caller.Addr)
@@ -222,6 +222,7 @@ func ParseFiltersV1(in []FilterV1, supportsLevel bool) ([]netio.Caller, error) {
 		filter.Address = url
 		filter.AwaitList = caller.Await
 		filter.Name = caller.Name
+		filter.Parent = parent
 		filter.Parallel = caller.Async
 		filter.Level = netio.LEVEL_NONE
 		filter.TermOnError = caller.OnError != "continue"
@@ -237,7 +238,7 @@ func ParseFiltersV1(in []FilterV1, supportsLevel bool) ([]netio.Caller, error) {
 			return nil, err
 		}
 		filter.Timeout = timeout
-		next, err := ParseFiltersV1(caller.Next, false)
+		next, err := ParseFiltersV1(caller.Next, false, caller.Name)
 		if err != nil {
 			return nil, err
 		}
