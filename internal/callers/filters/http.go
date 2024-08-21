@@ -30,7 +30,9 @@ func (f *HttpFilter) Call(ctx context.Context, rv netio.RouteValues, c netio.Clo
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
+
 	log.Trace(f.Tracedata("Call", r.Header, rv, r.URL, nil))
+
 	res, err := http.DefaultClient.Do(r)
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusBadGateway)
