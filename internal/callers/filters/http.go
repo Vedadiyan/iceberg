@@ -22,15 +22,15 @@ func NewHttpFilter(f *Filter) *HttpFilter {
 }
 
 func (f *HttpFilter) Call(ctx context.Context, rv netio.RouteValues, c netio.Cloner, _ netio.Cloner) (_n netio.Next, _r *http.Response, _e netio.Error) {
-	l := logging.GetLogger(f.Logger)
-	l.Init(f.Metadata())
-	defer l.Close(_n == netio.TERM, _e)
+	log := logging.GetLogger(f.Logger)
+	log.Init(f.Metadata())
+	defer log.Close(_n == netio.TERM, _e)
 
 	r, err := c(netio.WithUrl(f.Address, rv), netio.WithContext(ctx))
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
-	l.Trace(f.Tracedata("Call", r.Header, rv, r.URL, nil))
+	log.Trace(f.Tracedata("Call", r.Header, rv, r.URL, nil))
 	res, err := http.DefaultClient.Do(r)
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusBadGateway)
