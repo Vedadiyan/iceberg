@@ -11,7 +11,6 @@ import (
 
 	"github.com/vedadiyan/iceberg/internal/bootstrap"
 	"github.com/vedadiyan/iceberg/internal/callers/filters"
-	"github.com/vedadiyan/iceberg/internal/common"
 	"github.com/vedadiyan/iceberg/internal/common/netio"
 	"github.com/vedadiyan/iceberg/internal/middleware/cache"
 	"github.com/vedadiyan/iceberg/internal/middleware/opa"
@@ -93,7 +92,7 @@ func ParseCacheV1(value ResourceV1) ([]netio.Caller, error) {
 	len := len(b)
 	out := make([]netio.Caller, len)
 	for i := 0; i < len; i++ {
-		out[i] = common.NewLoggable(b[i])
+		out[i] = b[i]
 	}
 	return out, nil
 }
@@ -169,9 +168,9 @@ func ParseOpaV1(value ResourceV1) ([]netio.Caller, error) {
 	if err != nil {
 		return nil, err
 	}
-	out = append(out, common.NewLoggable(http))
-	out = append(out, common.NewLoggable(send))
-	out = append(out, common.NewLoggable(receive))
+	out = append(out, http)
+	out = append(out, send)
+	out = append(out, receive)
 	return out, nil
 }
 
@@ -247,7 +246,7 @@ func ParseFiltersV1(in []FilterV1, supportsLevel bool) ([]netio.Caller, error) {
 		if err != nil {
 			return nil, err
 		}
-		callers = append(callers, common.NewLoggable(c))
+		callers = append(callers, c)
 	}
 	return callers, nil
 }

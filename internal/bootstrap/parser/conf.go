@@ -66,15 +66,15 @@ type (
 		Fallbacks    []string       `yaml:"fallbacks"`
 		Retry        *LogRetryV1    `yaml:"retry"`
 		UserIdentity *string        `yaml:"userIdentity"`
-		Include      *LogTemplateV1 `yaml:"include"`
+		Template     *LogTemplateV1 `yaml:"template"`
 	}
 	LogBatchV1 struct {
 		MinBufferSize *int    `yaml:"minBufferSize"`
 		Interval      *string `yaml:"interval"`
 	}
 	LogRetryV1 struct {
-		Max   *int    `yaml:"max"`
-		Pause *string `yaml:"pause"`
+		Max   *int `yaml:"max"`
+		Pause *int `yaml:"pause"`
 	}
 	LogTemplateV1 struct {
 		Log     string `yaml:"log"`
