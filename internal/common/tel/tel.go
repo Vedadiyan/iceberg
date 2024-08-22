@@ -10,10 +10,12 @@ import (
 
 type (
 	LoggerFunc func() Telemetry
+	LogLevel   string
 
 	Telemetry interface {
 		Init(*Metadata)
-		Trace(string, any)
+		Log(LogLevel, ...any)
+		Notify()
 		Close(error)
 	}
 	Metadata struct {
