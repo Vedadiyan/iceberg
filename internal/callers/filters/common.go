@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vedadiyan/iceberg/internal/common/logging"
 	"github.com/vedadiyan/iceberg/internal/common/netio"
+	"github.com/vedadiyan/iceberg/internal/common/tel"
 )
 
 type (
@@ -29,9 +29,8 @@ type (
 		RequestUpdaters  []netio.RequestUpdater
 		ResponseUpdaters []netio.ResponseUpdater
 
-		instance        netio.Caller
-		metadata        *logging.Metadata
-		tracedataStatis *logging.TracedataStatic
+		instance netio.Caller
+		metadata *tel.Metadata
 	}
 )
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/vedadiyan/iceberg/internal/common/logging"
 	"github.com/vedadiyan/iceberg/internal/common/netio"
+	"github.com/vedadiyan/iceberg/internal/common/tel"
 )
 
 type (
@@ -21,24 +21,34 @@ func NewHttpFilter(f *Filter) *HttpFilter {
 	return httpFilter
 }
 
-func (f *HttpFilter) Call(ctx context.Context, rv netio.RouteValues, c netio.Cloner, _ netio.Cloner) (_n netio.Next, _r *http.Response, _e netio.Error) {
-	log := logging.GetLogger(f.Logger)
-	log.Init(f.Metadata())
-	defer log.Close(_n == netio.TERM, _e)
+func (f *HttpFilter) Call(ctx context.Context, rv netio.RouteValues, c netio.Cloner, _ netio.Cloner) (nxt netio.Next, rs *http.Response, e netio.Error) {
+	var (
+		rq  *http.Request
+		err error
+	)
 
-	r, err := c(netio.WithUrl(f.Address, rv), netio.WithContext(ctx))
+	tel := tel.Open(
+		f.Logger,
+		f.Metadata(),
+		tel.TraceRef(tel.Request(rq)),
+		tel.TraceRef(tel.Response(rs)),
+		tel.TraceRef(tel.Self(f.Filter)),
+		tel.TraceRef(tel.Next(&nxt)),
+		tel.Trace(tel.Path(rv)),
+		tel.Trace(tel.Func("Call")),
+	)
+	defer tel.Close(err)
+
+	rq, err = c(netio.WithUrl(f.Address, rv), netio.WithContext(ctx))
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
-
-	log.Trace(f.Tracedata("Call", r.Header, rv, r.URL, nil))
-
-	res, err := http.DefaultClient.Do(r)
+	rs, err = http.DefaultClient.Do(rq)
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusBadGateway)
 	}
-	if res.StatusCode > 399 {
-		return netio.TERM, nil, netio.NewError(res.Status, res.StatusCode)
+	if rs.StatusCode > 399 {
+		return netio.TERM, nil, netio.NewError(rs.Status, rs.StatusCode)
 	}
-	return netio.CONTINUE, res, nil
+	return netio.CONTINUE, rs, nil
 }
