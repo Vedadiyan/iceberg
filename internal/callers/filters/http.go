@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/vedadiyan/iceberg/internal/common/netio"
-	"github.com/vedadiyan/iceberg/internal/common/tel"
 )
 
 type (
@@ -22,29 +21,11 @@ func NewHttpFilter(f *Filter) *HttpFilter {
 }
 
 func (f *HttpFilter) Call(ctx context.Context, rv netio.RouteValues, c netio.Cloner, _ netio.Cloner) (nxt netio.Next, rs *http.Response, e netio.Error) {
-	var (
-		rq  *http.Request
-		err error
-	)
 
-	tel := tel.Open(
-		f.Logger,
-		f.Metadata(),
-		tel.TraceRef(tel.Request(rq)),
-		tel.TraceRef(tel.Response(rs)),
-		tel.TraceRef(tel.Self(f.Filter)),
-		tel.TraceRef(tel.Next(&nxt)),
-		tel.Trace(tel.Path(rv)),
-		tel.Trace(tel.Func("Call")),
-	)
-	defer tel.Close(err)
-
-	rq, err = c(netio.WithUrl(f.Address, rv), netio.WithContext(ctx))
+	rq, err := c(netio.WithUrl(f.Address, rv), netio.WithContext(ctx))
 	if err != nil {
 		return netio.TERM, nil, netio.NewError(err.Error(), http.StatusInternalServerError)
 	}
-
-	tel.Notify()
 
 	rs, err = http.DefaultClient.Do(rq)
 	if err != nil {

@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/nats-io/nats.go"
-	"github.com/vedadiyan/iceberg/internal/common/logging"
 	"github.com/vedadiyan/iceberg/internal/common/netio"
 	natshelpers "github.com/vedadiyan/nats-helpers"
 	"github.com/vedadiyan/nats-helpers/headers"
@@ -136,11 +135,6 @@ func NewDurableNATSFilter(f *NatsBase) (*NatsJSFilter, error) {
 }
 
 func (f *NatsJSFilter) Call(ctx context.Context, rv netio.RouteValues, c netio.Cloner, _ netio.Cloner) (_n netio.Next, _r *http.Response, _e netio.Error) {
-	log := logging.GetLogger(f.Logger)
-	log.Init(f.Metadata())
-	log.Trace(f.Tracedata("Call", nil, rv, nil, nil))
-	defer log.Close(_n == netio.TERM, _e)
-
 	inbox := f.conn.NewRespInbox()
 	resCh := make(chan *netio.ShadowResponse, 1)
 	errCh := make(chan error, 1)
@@ -159,11 +153,6 @@ func (f *NatsJSFilter) Call(ctx context.Context, rv netio.RouteValues, c netio.C
 
 func (f *NatsJSFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowResponse, errCh chan<- error) error {
 	handle := func(msg *nats.Msg) {
-		var err error
-		log := logging.GetLogger(f.Logger)
-		log.Init(f.Metadata())
-		defer log.Close(false, err)
-
 		clone := *msg
 
 		headers, err := headers.Import(clone.Header)
@@ -174,8 +163,6 @@ func (f *NatsJSFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowRes
 		if len(headers) > 0 {
 			clone.Header = nats.Header(headers)
 		}
-
-		log.Trace(f.Tracedata("SubscribeOnce", http.Header(clone.Header), nil, nil, clone.Data))
 
 		res, err := MsgToResponse(&clone)
 		if err != nil {
@@ -194,10 +181,6 @@ func (f *NatsJSFilter) SubscribeOnce(inbox string, resCh chan<- *netio.ShadowRes
 }
 
 func (f *NatsJSFilter) Publish(inbox string, c netio.Cloner) (_e error) {
-	log := logging.GetLogger(f.Logger)
-	log.Init(f.Metadata())
-	defer log.Close(false, _e)
-
 	req, err := c()
 	if err != nil {
 		return err
@@ -207,8 +190,6 @@ func (f *NatsJSFilter) Publish(inbox string, c netio.Cloner) (_e error) {
 	if err != nil {
 		return err
 	}
-
-	log.Trace(f.Tracedata("Publish", req.Header, nil, req.URL, data))
 
 	msg := &nats.Msg{
 		Subject: f.Subject,

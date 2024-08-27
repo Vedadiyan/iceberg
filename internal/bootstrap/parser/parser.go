@@ -13,6 +13,7 @@ import (
 	"github.com/vedadiyan/iceberg/internal/callers/filters"
 	"github.com/vedadiyan/iceberg/internal/common/netio"
 	"github.com/vedadiyan/iceberg/internal/middleware/cache"
+	"github.com/vedadiyan/iceberg/internal/middleware/log"
 	"github.com/vedadiyan/iceberg/internal/middleware/opa"
 	"gopkg.in/yaml.v3"
 )
@@ -54,6 +55,13 @@ func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string
 			return err
 		}
 		callers = append(callers, cache...)
+
+		log, err := ParseLogV1(value)
+		if err != nil {
+			return err
+		}
+		callers = append(callers, log...)
+
 		filters, err := ParseFiltersV1(value.Filters, true, key)
 		if err != nil {
 			return nil
@@ -105,16 +113,9 @@ func ParseLogV1(value ResourceV1) ([]netio.Caller, error) {
 	if err != nil {
 		return nil, err
 	}
-	ttl, err := Timeout(value.Use.Cache.TTL)
-	if err != nil {
-		return nil, err
-	}
-	cache := cache.Cache{
-		Address:     url,
-		KeyTemplate: value.Use.Cache.Key,
-		TTL:         ttl,
-	}
-	return cache.Build()
+	_ = url
+	log := log.Log{}
+	return log.Build()
 }
 
 func ParseOpaV1(value ResourceV1) ([]netio.Caller, error) {

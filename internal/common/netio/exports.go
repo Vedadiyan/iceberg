@@ -45,11 +45,13 @@ const (
 	CONTINUE Next = false
 
 	LEVEL_NONE     Level = 1
-	LEVEL_CONNECT  Level = 2
-	LEVEL_PRE      Level = 4
-	LEVEL_REQUEST  Level = 8
-	LEVEL_RESPONSE Level = 16
-	LEVEL_POST     Level = 32
+	LEVEL_BEGIN    Level = 2
+	LEVEL_CONNECT  Level = 4
+	LEVEL_PRE      Level = 8
+	LEVEL_REQUEST  Level = 16
+	LEVEL_RESPONSE Level = 32
+	LEVEL_POST     Level = 64
+	LEVEL_END      Level = 128
 )
 
 func (e *httpError) Error() string {
