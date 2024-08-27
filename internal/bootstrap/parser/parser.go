@@ -62,7 +62,7 @@ func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string
 		}
 		callers = append(callers, log...)
 
-		filters, err := ParseFiltersV1(value.Filters, true, key)
+		filters, err := ParseFiltersV1(value, value.Filters, true, key)
 		if err != nil {
 			return nil
 		}
@@ -212,7 +212,7 @@ func ParsePolicy(in []any) (map[string]opa.PolicyType, error) {
 	return policies, nil
 }
 
-func ParseFiltersV1(in []FilterV1, supportsLevel bool, parent string) ([]netio.Caller, error) {
+func ParseFiltersV1(resourcesV1 ResourceV1, in []FilterV1, supportsLevel bool, parent string) ([]netio.Caller, error) {
 	callers := make([]netio.Caller, 0)
 	for _, caller := range in {
 		url, err := url.Parse(caller.Addr)
@@ -239,7 +239,7 @@ func ParseFiltersV1(in []FilterV1, supportsLevel bool, parent string) ([]netio.C
 			return nil, err
 		}
 		filter.Timeout = timeout
-		next, err := ParseFiltersV1(caller.Next, false, caller.Name)
+		next, err := ParseFiltersV1(resourcesV1, caller.Next, false, caller.Name)
 		if err != nil {
 			return nil, err
 		}
