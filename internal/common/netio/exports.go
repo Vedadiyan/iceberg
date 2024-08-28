@@ -1,8 +1,10 @@
 package netio
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 
@@ -67,18 +69,28 @@ func NewError(message string, status int) Error {
 
 func Sort(callers ...Caller) []Caller {
 	main := make([]Caller, 0)
+	begin := make([]Caller, 0)
 	connect := make([]Caller, 0)
 	pre := make([]Caller, 0)
 	request := make([]Caller, 0)
 	respone := make([]Caller, 0)
 	post := make([]Caller, 0)
+	end := make([]Caller, 0)
 	for _, caller := range callers {
+		if caller.GetLevel() == LEVEL_BEGIN {
+			begin = append(begin, caller)
+			continue
+		}
+		if caller.GetLevel() == LEVEL_END {
+			end = append(end, caller)
+			continue
+		}
 		if caller.GetLevel() == LEVEL_PRE {
-			pre = append(main, caller)
+			pre = append(pre, caller)
 			continue
 		}
 		if caller.GetLevel() == LEVEL_POST {
-			post = append(main, caller)
+			post = append(post, caller)
 			continue
 		}
 		if caller.GetLevel()&LEVEL_NONE == LEVEL_NONE {
@@ -95,12 +107,14 @@ func Sort(callers ...Caller) []Caller {
 		}
 	}
 	final := make([]Caller, 0)
+	final = append(final, begin...)
 	final = append(final, connect...)
 	final = append(final, pre...)
 	final = append(final, request...)
 	final = append(final, main...)
 	final = append(final, respone...)
 	final = append(final, post...)
+	final = append(final, end...)
 	return final
 }
 
@@ -134,11 +148,15 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 			continue
 		}
 		term, res, err := cal.Call(cal.GetContext(), or.RouteValues, in.CloneRequest, or.CloneRequest)
-		if err != nil {
-			return nil, err
-		}
 		if term {
 			term = true
+		}
+		if err != nil {
+			res = &http.Response{
+				Header:     http.Header{},
+				StatusCode: err.Status(),
+			}
+			res.Body = io.NopCloser(bytes.NewBufferString(err.Error()))
 		}
 		if res == nil {
 			continue

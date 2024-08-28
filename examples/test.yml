@@ -13,7 +13,7 @@ spec:
       # supports standard template: /api/v1/:route_param
       frontend: '/chat/:user_id/:group_id'
       # the base url to which the request must be proxied
-      backend: 'ws://127.0.0.1:8081'
+      backend: 'http://127.0.0.1:8081'
       # values:
       #   head
       #   get
@@ -24,12 +24,52 @@ spec:
       method: 'get'
       # built-in middleware
       use:
-        opa: 
-          # Iceberg requires it's own OPA Agent 
-          agent: 'nats://127.0.0.1:4222/$OPA_AGENT'
-          # invokes before any filter on http connect
-          http: 
-            # policy types:
-            #   local:  must come from an environment variable with the same name 
-            #   remote: must be already available to the agent
-            - test-policy: local
+        # opa: 
+        #   # Iceberg requires it's own OPA Agent 
+        #   agent: 'nats://127.0.0.1:4222/$OPA_AGENT'
+        #   # invokes before any filter on http connect
+        #   http: 
+        #     # policy types:
+        #     #   local:  must come from an environment variable with the same name 
+        #     #   remote: must be already available to the agent
+        #     - test-policy: local
+        log: 
+          agent: 'loki://[default-loki]?batchSize=100&batchInterval=10s&retryMax=5&retryPause=1s'
+          # minimum log level
+          logLevel: info
+          # fallbacks if the Loki server fails
+          # values:
+          #   file
+          #   console
+          fallbacks:
+            - file 
+            - console
+          template: 
+            log: |
+              {
+                "level": $(level)
+                "timestamp": $(timestamp),
+                "app": $(app),
+                "userId": $(jwt.user_id),
+                "frontend": $(frontend),
+                "backend": $(backend)
+              }
+            trace: |
+              {
+                "headers": $(http.headers),
+                "header": $(http.headers["header"]),
+                "path": $(http.path),
+                "path_param": $(http.path["name"]),
+                "query": $(http.query),
+                "query_param": $(http.query["name"]),
+                "body": $(http.body),
+                "filter": $(filter),
+                "filter_param": $(filter.addr),
+                "func": $(func)
+              }
+            metrics: |
+              {
+                "benchmark": $(benchmark),
+                "memory": $(memory),
+                "cpu": $(cpu)
+              }

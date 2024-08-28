@@ -50,7 +50,7 @@ func (l *Log) GetContext() context.Context {
 }
 
 func (l *Log) Build() ([]netio.Caller, error) {
-	switch strings.ToLower("") {
+	switch strings.ToLower(l.Address.Scheme) {
 	case "loki":
 		{
 			loki, err := NewLokiLog(l)

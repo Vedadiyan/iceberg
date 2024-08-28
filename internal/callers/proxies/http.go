@@ -101,5 +101,6 @@ func (f *HttpProxy) Handle(w http.ResponseWriter, r *http.Request, rv netio.Rout
 		http.Error(w, _err.Message(), _err.Status())
 		return
 	}
+	w.WriteHeader(out.StatusCode)
 	out.Write(w)
 }

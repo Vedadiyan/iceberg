@@ -33,7 +33,15 @@ type (
 )
 
 func NewLokiLog(l *Log) (*LokiLog, error) {
-	panic("not implemented")
+	ll := new(LokiLog)
+	ll.Log = l
+	ll.get = &LokiBegin{
+		LokiLog: ll,
+	}
+	ll.set = &LokiEnd{
+		LokiLog: ll,
+	}
+	return ll, nil
 }
 
 func (lokiLog *LokiLog) Get() netio.Caller {
