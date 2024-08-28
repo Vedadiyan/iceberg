@@ -3,6 +3,7 @@ package log
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -67,7 +68,12 @@ func (f *LokiBegin) Call(ctx context.Context, rv netio.RouteValues, in netio.Clo
 
 func (f *LokiEnd) Call(ctx context.Context, rv netio.RouteValues, in netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
 	x, _ := in()
-
-	fmt.Println(x.Header.Get("X-From-Status"), f.Metadata)
+	status := x.Header.Get("X-From-Status")
+	if status != "200" {
+		d, _ := io.ReadAll(x.Body)
+		fmt.Println(status, string(d), f.Metadata)
+		return netio.CONTINUE, nil, nil
+	}
+	fmt.Println(status, f.Metadata)
 	return netio.CONTINUE, nil, nil
 }
