@@ -148,15 +148,17 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 			continue
 		}
 		term, res, err := cal.Call(cal.GetContext(), or.RouteValues, in.CloneRequest, or.CloneRequest)
-		if term {
-			term = true
-		}
 		if err != nil {
+			h := http.Header{}
+			h.Add("X-From-Status", fmt.Sprintf("%d", err.Status()))
 			res = &http.Response{
-				Header:     http.Header{},
+				Header:     h,
 				StatusCode: err.Status(),
 			}
 			res.Body = io.NopCloser(bytes.NewBufferString(err.Error()))
+		}
+		if term {
+			term = true
 		}
 		if res == nil {
 			continue
@@ -169,7 +171,7 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 		if _err != nil {
 			return nil, NewError(_err.Error(), http.StatusInternalServerError)
 		}
-		_err = UpdateRequest(in, tmp.Request, append(cal.GetRequestUpdaters(), ReqUpdateHeader("X-Request-Id")))
+		_err = UpdateRequest(in, tmp.Request, append(cal.GetRequestUpdaters(), ReqUpdateHeader("X-Request-Id"), ReqUpdateHeader("X-From-Status")))
 		if _err != nil {
 			return nil, NewError(_err.Error(), http.StatusInternalServerError)
 		}

@@ -66,6 +66,8 @@ func (f *LokiBegin) Call(ctx context.Context, rv netio.RouteValues, in netio.Clo
 }
 
 func (f *LokiEnd) Call(ctx context.Context, rv netio.RouteValues, in netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
-	fmt.Println(f.Metadata)
+	x, _ := in()
+
+	fmt.Println(x.Header.Get("X-From-Status"), f.Metadata)
 	return netio.CONTINUE, nil, nil
 }
