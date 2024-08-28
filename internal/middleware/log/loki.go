@@ -2,7 +2,9 @@ package log
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/vedadiyan/iceberg/internal/common/netio"
 )
@@ -10,6 +12,15 @@ import (
 type (
 	LokiLog struct {
 		*Log
+		Level string
+		Batch struct {
+			Size     int
+			Interval time.Duration
+		}
+		Retry struct {
+			Max      int
+			Interval time.Duration
+		}
 		get *LokiBegin
 		set *LokiEnd
 	}
@@ -42,9 +53,11 @@ func (l *LokiEnd) GetLevel() netio.Level {
 }
 
 func (f *LokiBegin) Call(ctx context.Context, rv netio.RouteValues, in netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+	fmt.Println(f.Metadata)
 	return netio.CONTINUE, nil, nil
 }
 
 func (f *LokiEnd) Call(ctx context.Context, rv netio.RouteValues, in netio.Cloner, _ netio.Cloner) (netio.Next, *http.Response, netio.Error) {
+	fmt.Println(f.Metadata)
 	return netio.CONTINUE, nil, nil
 }

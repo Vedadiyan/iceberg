@@ -38,7 +38,7 @@ func Parse(in []byte) (Version, *Metadata, any, error) {
 	return 0, nil, nil, fmt.Errorf("usupported version %s", conf.APIVersion)
 }
 
-func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string, string, []netio.Caller, ...bootstrap.RegistrationOptions)) error {
+func ParseV1(metadata *Metadata, resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string, string, []netio.Caller, ...bootstrap.RegistrationOptions)) error {
 	for key, value := range resourcesV1 {
 		url, err := url.Parse(value.Backend)
 		if err != nil {
@@ -56,13 +56,17 @@ func ParseV1(resourcesV1 map[string]ResourceV1, handleFunc func(*url.URL, string
 		}
 		callers = append(callers, cache...)
 
-		log, err := ParseLogV1(value)
+		log, err := ParseLogV1(value, map[string]string{
+			"App":      metadata.Name,
+			"Resource": key,
+			"Type":     "resource",
+		})
 		if err != nil {
 			return err
 		}
 		callers = append(callers, log...)
 
-		filters, err := ParseFiltersV1(value, value.Filters, true, key)
+		filters, err := ParseFiltersV1(metadata, key, value, value.Filters, true, "root")
 		if err != nil {
 			return nil
 		}
@@ -105,7 +109,7 @@ func ParseCacheV1(value ResourceV1) ([]netio.Caller, error) {
 	return out, nil
 }
 
-func ParseLogV1(value ResourceV1) ([]netio.Caller, error) {
+func ParseLogV1(value ResourceV1, metadata map[string]string) ([]netio.Caller, error) {
 	if value.Use.Log == nil {
 		return nil, nil
 	}
@@ -114,7 +118,11 @@ func ParseLogV1(value ResourceV1) ([]netio.Caller, error) {
 		return nil, err
 	}
 	_ = url
-	log := log.Log{}
+	log := log.Log{
+		Address:   url,
+		Fallbacks: value.Use.Log.Fallbacks,
+		Metadata:  metadata,
+	}
 	return log.Build()
 }
 
@@ -212,7 +220,7 @@ func ParsePolicy(in []any) (map[string]opa.PolicyType, error) {
 	return policies, nil
 }
 
-func ParseFiltersV1(resourcesV1 ResourceV1, in []FilterV1, supportsLevel bool, parent string) ([]netio.Caller, error) {
+func ParseFiltersV1(metadata *Metadata, resourceName string, resourcesV1 ResourceV1, in []FilterV1, supportsLevel bool, parent string) ([]netio.Caller, error) {
 	callers := make([]netio.Caller, 0)
 	for _, caller := range in {
 		url, err := url.Parse(caller.Addr)
@@ -239,7 +247,18 @@ func ParseFiltersV1(resourcesV1 ResourceV1, in []FilterV1, supportsLevel bool, p
 			return nil, err
 		}
 		filter.Timeout = timeout
-		next, err := ParseFiltersV1(resourcesV1, caller.Next, false, caller.Name)
+		log, err := ParseLogV1(resourcesV1, map[string]string{
+			"App":      metadata.Name,
+			"Resource": resourceName,
+			"Type":     "filter",
+			"Filter":   caller.Name,
+			"Parent":   parent,
+		})
+		if err != nil {
+			return nil, err
+		}
+		callers = append(callers, log...)
+		next, err := ParseFiltersV1(metadata, resourceName, resourcesV1, caller.Next, false, caller.Name)
 		if err != nil {
 			return nil, err
 		}

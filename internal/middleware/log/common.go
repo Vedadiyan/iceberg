@@ -3,6 +3,7 @@ package log
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/vedadiyan/iceberg/internal/common/netio"
@@ -10,6 +11,9 @@ import (
 
 type (
 	Log struct {
+		Address   *url.URL
+		Fallbacks []string
+		Metadata  map[string]string
 	}
 )
 

@@ -60,21 +60,10 @@ type (
 		Receive []any `yaml:"receive"`
 	}
 	LogV1 struct {
-		Agent        string         `yaml:"agent"`
-		LogLevel     string         `yaml:"logLevel"`
-		Batch        *LogBatchV1    `yaml:"batch"`
-		Fallbacks    []string       `yaml:"fallbacks"`
-		Retry        *LogRetryV1    `yaml:"retry"`
-		UserIdentity *string        `yaml:"userIdentity"`
-		Template     *LogTemplateV1 `yaml:"template"`
-	}
-	LogBatchV1 struct {
-		MinBufferSize *int    `yaml:"minBufferSize"`
-		Interval      *string `yaml:"interval"`
-	}
-	LogRetryV1 struct {
-		Max   *int `yaml:"max"`
-		Pause *int `yaml:"pause"`
+		Agent     string         `yaml:"agent"`
+		LogLevel  string         `yaml:"logLevel"`
+		Fallbacks []string       `yaml:"fallbacks"`
+		Template  *LogTemplateV1 `yaml:"template"`
 	}
 	LogTemplateV1 struct {
 		Log     string `yaml:"log"`

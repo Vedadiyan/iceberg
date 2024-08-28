@@ -37,12 +37,12 @@ func main() {
 	os.Setenv("ICERBERG_CONFIG", string(data))
 
 	config := os.Getenv("ICERBERG_CONFIG")
-	_, _, specs, err := parser.Parse([]byte(config))
+	_, metadata, specs, err := parser.Parse([]byte(config))
 	if err != nil {
 		log.Fatalln(err)
 	}
 	specsV1 := specs.(*parser.SpecV1)
-	err = parser.ParseV1(specsV1.Resources, func(u *url.URL, pattern string, method string, c []netio.Caller, opts ...bootstrap.RegistrationOptions) {
+	err = parser.ParseV1(metadata, specsV1.Resources, func(u *url.URL, pattern string, method string, c []netio.Caller, opts ...bootstrap.RegistrationOptions) {
 		proxy, err := proxies.NewProxy(u, c)
 		if err != nil {
 			log.Fatalln(err)
