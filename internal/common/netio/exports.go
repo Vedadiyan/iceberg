@@ -134,9 +134,9 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 	if err != nil {
 		return nil, NewError(err.Error(), http.StatusInternalServerError)
 	}
-	term := false
+	t := false
 	for _, cal := range callers {
-		if term && cal.GetLevel() != LEVEL_END {
+		if t && cal.GetLevel() != LEVEL_END {
 			continue
 		}
 		err := await(cal, &mut, ctx, tasks, in, out)
@@ -158,7 +158,7 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 			res.Body = io.NopCloser(bytes.NewBufferString(err.Error()))
 		}
 		if term {
-			term = true
+			t = true
 		}
 		if res == nil {
 			continue
