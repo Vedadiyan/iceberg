@@ -22,9 +22,6 @@ spec:
       #   patch
       #   delete
       method: ''
-      # logger 
-      logger:
-        fromRef: logConf
       # built-in middleware
       use:
         # cache layer
@@ -50,6 +47,9 @@ spec:
         #     exposedHeaders: comma separated values 
         cors: default
         # opa policy enforcement
+        # logger 
+        log:
+          fromRef: logConf
         opa: 
           # Iceberg requires it's own OPA Agent 
           agent: 'nats://[default_nats]/$OPA_AGENT'
