@@ -120,7 +120,11 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 	if err != nil {
 		return nil, NewError(err.Error(), http.StatusInternalServerError)
 	}
+	term := false
 	for _, cal := range callers {
+		if term && cal.GetLevel() != LEVEL_END {
+			continue
+		}
 		err := await(cal, &mut, ctx, tasks, in, out)
 		if err != nil {
 			return nil, err
@@ -134,11 +138,7 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 			return nil, err
 		}
 		if term {
-			res, err := NewShandowResponse(res)
-			if err != nil {
-				return nil, NewError(err.Error(), http.StatusInternalServerError)
-			}
-			return res, nil
+			term = true
 		}
 		if res == nil {
 			continue
@@ -151,7 +151,6 @@ func Cascade(in *ShadowRequest, callers ...Caller) (*ShadowResponse, Error) {
 		if _err != nil {
 			return nil, NewError(_err.Error(), http.StatusInternalServerError)
 		}
-
 		_err = UpdateRequest(in, tmp.Request, append(cal.GetRequestUpdaters(), ReqUpdateHeader("X-Request-Id")))
 		if _err != nil {
 			return nil, NewError(_err.Error(), http.StatusInternalServerError)
